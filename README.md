@@ -1,4 +1,4 @@
-# Data Fault Reporter
+# Data Fault Recorder
 
 A Next.js 15 application that stores uploaded CSV sensor data and renders it as interactive line graphs. It uses React 19, Tailwind CSS, and Chart.js for responsive client-side visualizations.
 
