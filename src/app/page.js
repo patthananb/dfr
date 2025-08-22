@@ -3,12 +3,14 @@ import Link from "next/link";
 export default function Home() {
   return (
     <main className="flex flex-col items-center justify-center min-h-screen p-8">
-      <h1 className="text-4xl font-bold mb-4">Sensor Dashboard</h1>
-      <p className="mb-4 text-center">
-        Upload sensor CSV data and explore charts on the graph page.
-      </p>
-      <Link href="/graph" className="text-blue-600 underline">
-        View Graphs
+      <h1 className="text-4xl font-bold mb-8 text-center">
+        Digital Fault Recorder
+      </h1>
+      <Link
+        href="/graph"
+        className="bg-blue-600 text-white px-6 py-3 rounded hover:bg-blue-700"
+      >
+        Go to Graph
       </Link>
     </main>
   );
