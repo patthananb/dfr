@@ -15,8 +15,8 @@ export async function GET(request) {
       const fileContent = await readFile(filePath, 'utf-8');
       return NextResponse.json({ success: true, files: [fileContent] });
     } else {
-      // Otherwise, return the list of filenames
-      const filenames = await readdir(dataDir);
+      // Otherwise, return the list of JSON filenames only
+      const filenames = (await readdir(dataDir)).filter(name => name.endsWith('.json'));
       return NextResponse.json({ success: true, filenames });
     }
   } catch (error) {
