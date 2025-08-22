@@ -57,13 +57,21 @@ const GraphPage = () => {
         if (data.success) {
           let allData = [];
           data.files.forEach(fileContent => {
-            const rows = fileContent.split('\n').slice(1); // Remove header row
-            rows.forEach(row => {
-              const [timestamp, value] = row.split(',');
-              if (timestamp && value) {
-                allData.push({ timestamp: new Date(parseFloat(timestamp)), value: parseFloat(value) });
+            try {
+              const json = JSON.parse(fileContent);
+              if (Array.isArray(json.data)) {
+                json.data.forEach(point => {
+                  if (point.timestamp !== undefined && point.value !== undefined) {
+                    allData.push({
+                      timestamp: new Date(point.timestamp),
+                      value: parseFloat(point.value),
+                    });
+                  }
+                });
               }
-            });
+            } catch (err) {
+              console.error('Invalid JSON in data file:', err);
+            }
           });
 
           allData.sort((a, b) => a.timestamp - b.timestamp);
