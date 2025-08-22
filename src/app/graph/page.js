@@ -55,8 +55,12 @@ const GraphPage = () => {
         const data = await res.json();
 
         if (data.success) {
-          let allData = [];
+          const allData = [];
+
           data.files.forEach(fileContent => {
+            let parsed = false;
+
+            // Try parsing as JSON first
             try {
               const json = JSON.parse(fileContent);
               if (Array.isArray(json.data)) {
@@ -68,9 +72,27 @@ const GraphPage = () => {
                     });
                   }
                 });
+                parsed = true;
               }
-            } catch (err) {
-              console.error('Invalid JSON in data file:', err);
+            } catch {
+              // Ignore JSON parse errors and attempt CSV parsing below
+            }
+
+            if (!parsed) {
+              const lines = fileContent.trim().split(/\r?\n/);
+              lines.forEach((line, index) => {
+                if (!line) return;
+                if (index === 0 && line.includes('timestamp')) return;
+                const [ts, val] = line.split(',');
+                const timestamp = Number(ts);
+                const value = Number(val);
+                if (!Number.isNaN(timestamp) && !Number.isNaN(value)) {
+                  allData.push({
+                    timestamp: new Date(timestamp),
+                    value,
+                  });
+                }
+              });
             }
           });
 

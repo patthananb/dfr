@@ -31,15 +31,17 @@ OFFSET=2047
 FREQUENCY=$(awk -v min=1 -v max=10 'BEGIN{srand(); print int(min+rand()*(max-min+1))}')
 
 BASE_TS=$(( $(date +%s) * 1000 ))
+
+# Build JSON payload of sine wave points
 JSON_PAYLOAD="{\"faultType\":\"$FAULT_TYPE\",\"faultLocation\":\"$FAULT_LOCATION\",\"date\":\"$CURRENT_DATE\",\"time\":\"$CURRENT_TIME\",\"data\":["
-for ((i = 0; i <= $DURATION; i += $INTERVAL)); do
+for ((i = 0; i <= DURATION; i += INTERVAL)); do
   VALUE=$(awk -v amp=$AMPLITUDE -v freq=$FREQUENCY -v t_ms=$i -v offset=$OFFSET \
     'BEGIN{print int(amp * sin(2 * 3.14159265359 * freq * (t_ms / 1000)) + offset)}')
   TIMESTAMP=$(( BASE_TS + i ))
   JSON_PAYLOAD+="{\"timestamp\":$TIMESTAMP,\"value\":$VALUE},"
 done
-JSON_PAYLOAD=${JSON_PAYLOAD%,}
-JSON_PAYLOAD+"]}"
+# Remove trailing comma and close JSON array/object
+JSON_PAYLOAD="${JSON_PAYLOAD%,}]}"
 
 # === Filename includes metadata ===
 FILENAME="fault_${FAULT_TYPE}_${FAULT_LOCATION}_${CURRENT_DATE//-/}_${CURRENT_TIME//:/}.json"
