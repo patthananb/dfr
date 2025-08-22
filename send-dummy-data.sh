@@ -23,32 +23,26 @@ if ! curl -s --head "$STATUS_URL" | head -n 1 | grep "200 OK" >/dev/null; then
   exit 1
 fi
 
-# === Generate Sine Wave CSV Data ===
+# === Generate Sine Wave JSON Data ===
 DURATION=1000 # milliseconds
 INTERVAL=10   # 10 ms between points
 AMPLITUDE=2000
 OFFSET=2047
 FREQUENCY=$(awk -v min=1 -v max=10 'BEGIN{srand(); print int(min+rand()*(max-min+1))}')
 
-# CSV with metadata header
-CSV_PAYLOAD="# Fault Type: $FAULT_TYPE
-# Fault Location: $FAULT_LOCATION
-# Date: $CURRENT_DATE
-# Time: $CURRENT_TIME
-n,value"
-
-# Generate sine wave values
-n=1
+BASE_TS=$(( $(date +%s) * 1000 ))
+JSON_PAYLOAD="{\"faultType\":\"$FAULT_TYPE\",\"faultLocation\":\"$FAULT_LOCATION\",\"date\":\"$CURRENT_DATE\",\"time\":\"$CURRENT_TIME\",\"data\":["
 for ((i = 0; i <= $DURATION; i += $INTERVAL)); do
   VALUE=$(awk -v amp=$AMPLITUDE -v freq=$FREQUENCY -v t_ms=$i -v offset=$OFFSET \
     'BEGIN{print int(amp * sin(2 * 3.14159265359 * freq * (t_ms / 1000)) + offset)}')
-  CSV_PAYLOAD+="
-$n,$VALUE"
-  ((n++))
+  TIMESTAMP=$(( BASE_TS + i ))
+  JSON_PAYLOAD+="{\"timestamp\":$TIMESTAMP,\"value\":$VALUE},"
 done
+JSON_PAYLOAD=${JSON_PAYLOAD%,}
+JSON_PAYLOAD+"]}"
 
 # === Filename includes metadata ===
-FILENAME="fault_${FAULT_TYPE}_${FAULT_LOCATION}_${CURRENT_DATE//-/}_${CURRENT_TIME//:/}.csv"
+FILENAME="fault_${FAULT_TYPE}_${FAULT_LOCATION}_${CURRENT_DATE//-/}_${CURRENT_TIME//:/}.json"
 
 # === Display Info ===
 echo "---------------------------------"
@@ -59,11 +53,11 @@ echo "Frequency: ${FREQUENCY} Hz"
 echo "Filename: $FILENAME"
 echo "---------------------------------"
 
-# === Upload CSV ===
+# === Upload JSON ===
 curl -s -X POST \
-  -F "file=@-;type=text/csv;filename=$FILENAME" \
+  -F "file=@-;type=application/json;filename=$FILENAME" \
   "$API_URL" <<EOF
-$CSV_PAYLOAD
+$JSON_PAYLOAD
 EOF
 
 echo -e "\n✅ Successfully sent data to $API_URL"
