@@ -54,27 +54,15 @@ const GraphPage = () => {
         const res = await fetch(`/api/data?file=${selectedFile}`);
         const data = await res.json();
 
-        if (data.success) {
-          let allData = [];
-          data.files.forEach(fileContent => {
-            try {
-              const json = JSON.parse(fileContent);
-              if (Array.isArray(json.data)) {
-                json.data.forEach(point => {
-                  if (point.timestamp !== undefined && point.value !== undefined) {
-                    allData.push({
-                      timestamp: new Date(point.timestamp),
-                      value: parseFloat(point.value),
-                    });
-                  }
-                });
-              }
-            } catch (err) {
-              console.error('Invalid JSON in data file:', err);
-            }
-          });
-
-          allData.sort((a, b) => a.timestamp - b.timestamp);
+        if (data.success && data.file) {
+          const points = Array.isArray(data.file.data) ? data.file.data : [];
+          const allData = points
+            .filter(p => p.timestamp !== undefined && p.value !== undefined)
+            .map(p => ({
+              timestamp: new Date(p.timestamp),
+              value: parseFloat(p.value),
+            }))
+            .sort((a, b) => a.timestamp - b.timestamp);
 
           const chartJsData = {
             labels: allData.map(d => d.timestamp.toLocaleTimeString()),

@@ -10,10 +10,11 @@ export async function GET(request) {
 
   try {
     if (filename) {
-      // If a filename is provided, read and return that file's content
+      // If a filename is provided, read and return that file's JSON content
       const filePath = join(dataDir, filename);
       const fileContent = await readFile(filePath, 'utf-8');
-      return NextResponse.json({ success: true, files: [fileContent] });
+      const json = JSON.parse(fileContent);
+      return NextResponse.json({ success: true, file: json });
     } else {
       // Otherwise, return the list of JSON filenames only
       const filenames = (await readdir(dataDir)).filter(name => name.endsWith('.json'));
