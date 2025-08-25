@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# === Configuration ===
-API_URL="http://localhost:3000/api/upload"
-
 # === Fault Metadata ===
 FAULT_TYPES=("line_to_ground" "line_to_line" "three_phase")
 FAULT_LOCATIONS=("feeder_1" "feeder_2" "feeder_3" "feeder_4" "feeder_5")
@@ -54,21 +51,18 @@ FILENAME="fault_${FAULT_TYPE}_${FAULT_LOCATION}_${CURRENT_DATE//-/}_${CURRENT_TI
 
 # === Display Info ===
 echo "---------------------------------"
-echo "Sending sine wave data to the server:"
+echo "Generating sine wave data:"
 echo "Fault Type: ${FAULT_TYPE}"
 echo "Fault Location: ${FAULT_LOCATION}"
 echo "Frequencies (Hz): v1=$V1_FREQ v2=$V2_FREQ v3=$V3_FREQ i1=$I1_FREQ i2=$I2_FREQ i3=$I3_FREQ"
 echo "Filename: $FILENAME"
 echo "---------------------------------"
 
-# === Upload JSON ===
-HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
-  -H "Content-Type: application/json" \
-  --data "$JSON_PAYLOAD" "$API_URL")
-
-if [[ "$HTTP_STATUS" == 2* ]]; then
-  echo "✅ Successfully sent data to $API_URL"
+# === Save JSON locally ===
+echo "$JSON_PAYLOAD" > "data/$FILENAME"
+if [[ -f "data/$FILENAME" ]]; then
+  echo "✅ Saved data to data/$FILENAME"
 else
-  echo "⚠️ Failed to send data to $API_URL (status: $HTTP_STATUS)"
+  echo "⚠️ Failed to save data to data/$FILENAME"
 fi
 
