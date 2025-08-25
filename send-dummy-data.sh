@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# === Resolve script and data directories ===
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+DATA_DIR="$SCRIPT_DIR/data"
+
 # === Fault Metadata ===
 FAULT_TYPES=("line_to_ground" "line_to_line" "three_phase")
 FAULT_LOCATIONS=("feeder_1" "feeder_2" "feeder_3" "feeder_4" "feeder_5")
@@ -13,7 +17,8 @@ CURRENT_DATE=$(date +"%Y-%m-%d")
 CURRENT_TIME=$(date +"%H:%M:%S")
 
 # === Clear existing data files ===
-find data -type f ! -name '.gitkeep' -delete
+mkdir -p "$DATA_DIR"
+find "$DATA_DIR" -type f ! -name '.gitkeep' -delete
 
 # === Generate Sine Wave JSON Data ===
 SAMPLES=1000
@@ -59,10 +64,10 @@ echo "Filename: $FILENAME"
 echo "---------------------------------"
 
 # === Save JSON locally ===
-echo "$JSON_PAYLOAD" > "data/$FILENAME"
-if [[ -f "data/$FILENAME" ]]; then
-  echo "✅ Saved data to data/$FILENAME"
+echo "$JSON_PAYLOAD" > "$DATA_DIR/$FILENAME"
+if [[ -f "$DATA_DIR/$FILENAME" ]]; then
+  echo "✅ Saved data to $DATA_DIR/$FILENAME"
 else
-  echo "⚠️ Failed to save data to data/$FILENAME"
+  echo "⚠️ Failed to save data to $DATA_DIR/$FILENAME"
 fi
 
