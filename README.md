@@ -17,7 +17,7 @@ A Next.js 15 application that stores uploaded fault data in compact JSON files a
 ## Data Flow
 1. Client uploads a JSON file to `/api/upload`.
 2. The server saves the file in `data/` with a timestamped name.
-3. The client fetches `/api/data` to list files, then `/api/data?file=...` to get contents.
+3. The client fetches `/api/data` to list files, then `/api/data?file=...` to get the JSON shown below.
 4. Parsed samples (`{n,V1,V2,V3,I1,I2,I3}`) are rendered in separate Chart.js graphs for voltage and current data.
 
 ## File Format
@@ -35,6 +35,8 @@ Fault recordings are stored as JSON with metadata and an array of sample objects
   ]
 }
 ```
+
+The `date` and `time` fields mark when the fault begins; samples are indexed only by `n` with no per-sample timestamps.
 
 ## Development
 ```bash
