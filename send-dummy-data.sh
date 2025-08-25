@@ -73,7 +73,7 @@ for ((i = 1; i <= SAMPLES; i++)); do
   }')
   JSON_PAYLOAD+="$ROW"
   if [ $i -lt $SAMPLES ]; then
-    JSON_PAYLOAD+=",";
+    JSON_PAYLOAD+=","
   fi
 
 done
