@@ -24,9 +24,19 @@ ChartJS.register(
 );
 
 const GraphPage = () => {
-  const [chartData, setChartData] = useState(null);
+  const [voltageData, setVoltageData] = useState(null);
+  const [currentData, setCurrentData] = useState(null);
   const [filenames, setFilenames] = useState([]);
   const [selectedFile, setSelectedFile] = useState('');
+  const [visible, setVisible] = useState({
+    v1: true,
+    v2: true,
+    v3: true,
+    i1: true,
+    i2: true,
+    i3: true,
+  });
+  const [scale, setScale] = useState(1000);
 
   useEffect(() => {
     const fetchFilenames = async () => {
@@ -34,9 +44,10 @@ const GraphPage = () => {
         const res = await fetch('/api/data');
         const data = await res.json();
         if (data.success) {
-          setFilenames(data.filenames);
-          if (data.filenames.length > 0) {
-            setSelectedFile(data.filenames[0]);
+          const files = data.filenames.filter(name => name !== '.gitkeep');
+          setFilenames(files);
+          if (files.length > 0) {
+            setSelectedFile(files[0]);
           }
         }
       } catch (error) {
@@ -52,72 +63,39 @@ const GraphPage = () => {
 
       try {
         const res = await fetch(`/api/data?file=${selectedFile}`);
-        const data = await res.json();
+        const result = await res.json();
+        if (!result.success || !result.files?.[0]) return;
+        const fileContent = result.files[0];
+        const json = JSON.parse(fileContent);
+        if (!Array.isArray(json.data)) return;
 
-        if (data.success) {
-          const allData = [];
+        const samples = json.data;
+        const labels = samples.map(p => p.n);
 
-          data.files.forEach(fileContent => {
-            let parsed = false;
+        const voltageDatasets = [
+          { key: 'v1', label: 'V1', data: samples.map(p => p.v1), borderColor: 'red' },
+          { key: 'v2', label: 'V2', data: samples.map(p => p.v2), borderColor: 'green' },
+          { key: 'v3', label: 'V3', data: samples.map(p => p.v3), borderColor: 'blue' },
+        ];
+        const currentDatasets = [
+          { key: 'i1', label: 'I1', data: samples.map(p => p.i1), borderColor: 'orange' },
+          { key: 'i2', label: 'I2', data: samples.map(p => p.i2), borderColor: 'purple' },
+          { key: 'i3', label: 'I3', data: samples.map(p => p.i3), borderColor: 'teal' },
+        ];
 
-            // Try parsing as JSON first
-            try {
-              const json = JSON.parse(fileContent);
-              if (Array.isArray(json.data)) {
-                json.data.forEach(point => {
-                  if (point.timestamp !== undefined && point.value !== undefined) {
-                    allData.push({
-                      timestamp: new Date(point.timestamp),
-                      value: parseFloat(point.value),
-                    });
-                  }
-                });
-                parsed = true;
-              }
-            } catch {
-              // Ignore JSON parse errors and attempt CSV parsing below
-            }
-
-            if (!parsed) {
-              const lines = fileContent.trim().split(/\r?\n/);
-              lines.forEach((line, index) => {
-                if (!line) return;
-                if (index === 0 && line.includes('timestamp')) return;
-                const [ts, val] = line.split(',');
-                const timestamp = Number(ts);
-                const value = Number(val);
-                if (!Number.isNaN(timestamp) && !Number.isNaN(value)) {
-                  allData.push({
-                    timestamp: new Date(timestamp),
-                    value,
-                  });
-                }
-              });
-            }
-          });
-
-          allData.sort((a, b) => a.timestamp - b.timestamp);
-
-          const chartJsData = {
-            labels: allData.map(d => d.timestamp.toLocaleTimeString()),
-            datasets: [
-              {
-                label: 'Sensor Value',
-                data: allData.map(d => d.value),
-                borderColor: 'rgb(75, 192, 192)',
-                tension: 0.1,
-              },
-            ],
-          };
-          setChartData(chartJsData);
-        }
+        setVoltageData({ labels, datasets: voltageDatasets });
+        setCurrentData({ labels, datasets: currentDatasets });
+        setScale(labels.length);
       } catch (error) {
         console.error('Error fetching data:', error);
       }
     };
-
     fetchData();
   }, [selectedFile]);
+
+  const toggleVisibility = key => {
+    setVisible(prev => ({ ...prev, [key]: !prev[key] }));
+  };
 
   return (
     <div className="container">
@@ -129,9 +107,67 @@ const GraphPage = () => {
           ))}
         </select>
       </div>
-      {chartData ? (
-        <div className="chart-container">
-          <Line data={chartData} />
+      <div className="w-full max-w-3xl mx-auto my-4">
+        <label className="flex flex-col items-center">
+          <span>Horizontal scale</span>
+          <input
+            type="range"
+            min={1}
+            max={voltageData?.labels.length || 1000}
+            value={scale}
+            onChange={(e) => setScale(Number(e.target.value))}
+            className="w-full"
+          />
+        </label>
+      </div>
+      {voltageData && currentData ? (
+        <div className="flex flex-col items-center space-y-8">
+          <div className="w-full max-w-3xl">
+            <h2 className="text-center mb-2">Voltage</h2>
+            <Line
+              data={{
+                labels: voltageData.labels.slice(0, scale),
+                datasets: voltageData.datasets
+                  .filter(ds => visible[ds.key])
+                  .map(ds => ({ ...ds, tension: 0.1, data: ds.data.slice(0, scale) })),
+              }}
+            />
+            <div className="flex justify-center gap-4 mt-2">
+              {['v1', 'v2', 'v3'].map(key => (
+                <label key={key} className="flex items-center gap-1">
+                  <input
+                    type="checkbox"
+                    checked={visible[key]}
+                    onChange={() => toggleVisibility(key)}
+                  />
+                  {key.toUpperCase()}
+                </label>
+              ))}
+            </div>
+          </div>
+          <div className="w-full max-w-3xl">
+            <h2 className="text-center mb-2">Current</h2>
+            <Line
+              data={{
+                labels: currentData.labels.slice(0, scale),
+                datasets: currentData.datasets
+                  .filter(ds => visible[ds.key])
+                  .map(ds => ({ ...ds, tension: 0.1, data: ds.data.slice(0, scale) })),
+              }}
+            />
+            <div className="flex justify-center gap-4 mt-2">
+              {['i1', 'i2', 'i3'].map(key => (
+                <label key={key} className="flex items-center gap-1">
+                  <input
+                    type="checkbox"
+                    checked={visible[key]}
+                    onChange={() => toggleVisibility(key)}
+                  />
+                  {key.toUpperCase()}
+                </label>
+              ))}
+            </div>
+          </div>
         </div>
       ) : (
         <p>Loading data...</p>
