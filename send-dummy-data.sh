@@ -17,7 +17,7 @@ CURRENT_DATE=$(date +"%Y-%m-%d")
 CURRENT_TIME=$(date +"%H:%M:%S")
 
 # === Clear existing data files ===
-find data -type f -delete
+find data -type f ! -name '.gitkeep' -delete
 
 # === Check if Next.js server is running ===
 if ! curl -s --head "$STATUS_URL" | head -n 1 | grep "200 OK" >/dev/null; then
