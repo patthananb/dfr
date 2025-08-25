@@ -23,28 +23,32 @@ if ! curl -s --head "$STATUS_URL" | head -n 1 | grep "200 OK" >/dev/null; then
   exit 1
 fi
 
-# === Generate Sine Wave JSON Data ===
-DURATION=1000 # milliseconds
-INTERVAL=10   # 10 ms between points
-AMPLITUDE=2000
-OFFSET=2047
+# === Generate CSV Data ===
+SAMPLES=100
+V_AMP=3000
+V_OFFSET=2048
+I_AMP=1000
 FREQUENCY=$(awk -v min=1 -v max=10 'BEGIN{srand(); print int(min+rand()*(max-min+1))}')
 
-BASE_TS=$(( $(date +%s) * 1000 ))
+CSV_PAYLOAD="# Fault Type: $FAULT_TYPE\n# Fault Location: $FAULT_LOCATION\n# Date: $CURRENT_DATE\n# Time: $CURRENT_TIME\n"
+CSV_PAYLOAD+="n,V1,V2,V3,I1,I2,I3\n"
 
-# Build JSON payload of sine wave points
-JSON_PAYLOAD="{\"faultType\":\"$FAULT_TYPE\",\"faultLocation\":\"$FAULT_LOCATION\",\"date\":\"$CURRENT_DATE\",\"time\":\"$CURRENT_TIME\",\"data\":["
-for ((i = 0; i <= DURATION; i += INTERVAL)); do
-  VALUE=$(awk -v amp=$AMPLITUDE -v freq=$FREQUENCY -v t_ms=$i -v offset=$OFFSET \
-    'BEGIN{print int(amp * sin(2 * 3.14159265359 * freq * (t_ms / 1000)) + offset)}')
-  TIMESTAMP=$(( BASE_TS + i ))
-  JSON_PAYLOAD+="{\"timestamp\":$TIMESTAMP,\"value\":$VALUE},"
+for ((i = 1; i <= SAMPLES; i++)); do
+  ROW=$(awk -v i=$i -v freq=$FREQUENCY -v vamp=$V_AMP -v voff=$V_OFFSET -v iamp=$I_AMP -v samples=$SAMPLES 'BEGIN{
+    ang = 2 * 3.14159265359 * freq * i / samples;
+    V1 = int(vamp * sin(ang) + voff);
+    V2 = int(vamp * sin(ang - 2 * 3.14159265359 / 3) + voff);
+    V3 = int(vamp * sin(ang + 2 * 3.14159265359 / 3) + voff);
+    I1 = int(iamp * sin(ang));
+    I2 = int(iamp * sin(ang - 2 * 3.14159265359 / 3));
+    I3 = int(iamp * sin(ang + 2 * 3.14159265359 / 3));
+    printf "%d,%d,%d,%d,%d,%d,%d", i, V1, V2, V3, I1, I2, I3;
+  }')
+  CSV_PAYLOAD+="$ROW\n"
 done
-# Remove trailing comma and close JSON array/object
-JSON_PAYLOAD="${JSON_PAYLOAD%,}]}"
 
 # === Filename includes metadata ===
-FILENAME="fault_${FAULT_TYPE}_${FAULT_LOCATION}_${CURRENT_DATE//-/}_${CURRENT_TIME//:/}.json"
+FILENAME="fault_${FAULT_TYPE}_${FAULT_LOCATION}_${CURRENT_DATE//-/}_${CURRENT_TIME//:/}.csv"
 
 # === Display Info ===
 echo "---------------------------------"
@@ -55,11 +59,11 @@ echo "Frequency: ${FREQUENCY} Hz"
 echo "Filename: $FILENAME"
 echo "---------------------------------"
 
-# === Upload JSON ===
+# === Upload CSV ===
 curl -s -X POST \
-  -F "file=@-;type=application/json;filename=$FILENAME" \
+  -F "file=@-;type=text/csv;filename=$FILENAME" \
   "$API_URL" <<EOF
-$JSON_PAYLOAD
+$CSV_PAYLOAD
 EOF
 
 echo -e "\n✅ Successfully sent data to $API_URL"

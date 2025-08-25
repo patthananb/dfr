@@ -60,53 +60,58 @@ const GraphPage = () => {
           data.files.forEach(fileContent => {
             let parsed = false;
 
-            // Try parsing as JSON first
+            // Attempt JSON parsing first
             try {
               const json = JSON.parse(fileContent);
               if (Array.isArray(json.data)) {
                 json.data.forEach(point => {
-                  if (point.timestamp !== undefined && point.value !== undefined) {
+                  const { n, V1, V2, V3, I1, I2, I3 } = point;
+                  if ([n, V1, V2, V3, I1, I2, I3].every(v => v !== undefined)) {
                     allData.push({
-                      timestamp: new Date(point.timestamp),
-                      value: parseFloat(point.value),
+                      n: Number(n),
+                      V1: Number(V1),
+                      V2: Number(V2),
+                      V3: Number(V3),
+                      I1: Number(I1),
+                      I2: Number(I2),
+                      I3: Number(I3),
                     });
                   }
                 });
                 parsed = true;
               }
             } catch {
-              // Ignore JSON parse errors and attempt CSV parsing below
+              // Ignore JSON parse errors and attempt CSV parsing
             }
 
             if (!parsed) {
               const lines = fileContent.trim().split(/\r?\n/);
-              lines.forEach((line, index) => {
-                if (!line) return;
-                if (index === 0 && line.includes('timestamp')) return;
-                const [ts, val] = line.split(',');
-                const timestamp = Number(ts);
-                const value = Number(val);
-                if (!Number.isNaN(timestamp) && !Number.isNaN(value)) {
-                  allData.push({
-                    timestamp: new Date(timestamp),
-                    value,
-                  });
+              lines.forEach(line => {
+                if (!line || line.startsWith('#')) return;
+                const parts = line.split(',');
+                if (parts[0] === 'n') return;
+                if (parts.length >= 7) {
+                  const [n, V1, V2, V3, I1, I2, I3] = parts.map(Number);
+                  if (![n, V1, V2, V3, I1, I2, I3].some(Number.isNaN)) {
+                    allData.push({ n, V1, V2, V3, I1, I2, I3 });
+                  }
                 }
               });
             }
           });
 
-          allData.sort((a, b) => a.timestamp - b.timestamp);
+          allData.sort((a, b) => a.n - b.n);
 
+          const labels = allData.map(d => d.n);
           const chartJsData = {
-            labels: allData.map(d => d.timestamp.toLocaleTimeString()),
+            labels,
             datasets: [
-              {
-                label: 'Sensor Value',
-                data: allData.map(d => d.value),
-                borderColor: 'rgb(75, 192, 192)',
-                tension: 0.1,
-              },
+              { label: 'V1', data: allData.map(d => d.V1), borderColor: 'red', tension: 0.1 },
+              { label: 'V2', data: allData.map(d => d.V2), borderColor: 'green', tension: 0.1 },
+              { label: 'V3', data: allData.map(d => d.V3), borderColor: 'blue', tension: 0.1 },
+              { label: 'I1', data: allData.map(d => d.I1), borderColor: 'orange', tension: 0.1 },
+              { label: 'I2', data: allData.map(d => d.I2), borderColor: 'purple', tension: 0.1 },
+              { label: 'I3', data: allData.map(d => d.I3), borderColor: 'brown', tension: 0.1 },
             ],
           };
           setChartData(chartJsData);
