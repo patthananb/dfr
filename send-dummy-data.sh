@@ -7,9 +7,7 @@ FAULT_TYPES=("line_to_ground" "line_to_line" "three_phase")
 FAULT_LOCATIONS=("feeder_1" "feeder_2" "feeder_3" "feeder_4" "feeder_5")
 
 SAMPLES=100
-V_AMP=3000
 V_OFFSET=2048
-I_AMP=1000
 FREQUENCY=""
 FAULT_TYPE=""
 FAULT_LOCATION=""
@@ -46,8 +44,16 @@ if [ -z "$FAULT_LOCATION" ]; then
   FAULT_LOCATION=${FAULT_LOCATIONS[$RANDOM % ${#FAULT_LOCATIONS[@]}]}
 fi
 if [ -z "$FREQUENCY" ]; then
-  FREQUENCY=$(awk -v min=1 -v max=10 'BEGIN{srand(); print int(min+rand()*(max-min+1))}')
+  FREQUENCY=$(awk -v min=40 -v max=60 'BEGIN{srand(); print int(min+rand()*(max-min+1))}')
 fi
+
+# Random amplitudes for each channel
+V1_AMP=$(awk 'BEGIN{srand(); print int(1000+rand()*3000)}')
+V2_AMP=$(awk 'BEGIN{srand(); print int(1000+rand()*3000)}')
+V3_AMP=$(awk 'BEGIN{srand(); print int(1000+rand()*3000)}')
+I1_AMP=$(awk 'BEGIN{srand(); print int(100+rand()*900)}')
+I2_AMP=$(awk 'BEGIN{srand(); print int(100+rand()*900)}')
+I3_AMP=$(awk 'BEGIN{srand(); print int(100+rand()*900)}')
 
 CURRENT_DATE=$(date +"%Y-%m-%d")
 CURRENT_TIME=$(date +"%H:%M:%S")
@@ -62,14 +68,14 @@ read -r -d '' JSON_PAYLOAD <<JSON_START
 {"faultType":"$FAULT_TYPE","faultLocation":"$FAULT_LOCATION","date":"$CURRENT_DATE","time":"$CURRENT_TIME","data":[
 JSON_START
 for ((i = 1; i <= SAMPLES; i++)); do
-  ROW=$(awk -v i=$i -v freq=$FREQUENCY -v vamp=$V_AMP -v voff=$V_OFFSET -v iamp=$I_AMP -v samples=$SAMPLES 'BEGIN{
+  ROW=$(awk -v i=$i -v freq=$FREQUENCY -v v1a=$V1_AMP -v v2a=$V2_AMP -v v3a=$V3_AMP -v voff=$V_OFFSET -v i1a=$I1_AMP -v i2a=$I2_AMP -v i3a=$I3_AMP -v samples=$SAMPLES 'BEGIN{
     ang = 2 * 3.14159265359 * freq * i / samples;
-    V1 = int(vamp * sin(ang) + voff);
-    V2 = int(vamp * sin(ang - 2 * 3.14159265359 / 3) + voff);
-    V3 = int(vamp * sin(ang + 2 * 3.14159265359 / 3) + voff);
-    I1 = int(iamp * sin(ang));
-    I2 = int(iamp * sin(ang - 2 * 3.14159265359 / 3));
-    I3 = int(iamp * sin(ang + 2 * 3.14159265359 / 3));
+    V1 = int(v1a * sin(ang) + voff);
+    V2 = int(v2a * sin(ang - 2 * 3.14159265359 / 3) + voff);
+    V3 = int(v3a * sin(ang + 2 * 3.14159265359 / 3) + voff);
+    I1 = int(i1a * sin(ang));
+    I2 = int(i2a * sin(ang - 2 * 3.14159265359 / 3));
+    I3 = int(i3a * sin(ang + 2 * 3.14159265359 / 3));
     printf("{\\\"n\\\":%d,\\\"V1\\\":%d,\\\"V2\\\":%d,\\\"V3\\\":%d,\\\"I1\\\":%d,\\\"I2\\\":%d,\\\"I3\\\":%d}", i, V1, V2, V3, I1, I2, I3);
   }')
   JSON_PAYLOAD+="$ROW"

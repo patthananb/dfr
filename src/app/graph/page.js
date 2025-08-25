@@ -29,6 +29,13 @@ const GraphPage = () => {
   const [filenames, setFilenames] = useState([]);
   const [selectedFile, setSelectedFile] = useState('');
   const [dataPoints, setDataPoints] = useState([]);
+  const [meta, setMeta] = useState({
+    faultType: '',
+    faultLocation: '',
+    date: '',
+    time: '',
+  });
+  const [loading, setLoading] = useState(false);
   const [visible, setVisible] = useState({
     V1: true,
     V2: true,
@@ -61,61 +68,38 @@ const GraphPage = () => {
     const fetchData = async () => {
       if (!selectedFile) return;
 
+      setLoading(true);
       try {
         const res = await fetch(`/api/data?file=${selectedFile}`);
         const data = await res.json();
 
-        if (data.success) {
-          const allData = [];
-
-          data.files.forEach(fileContent => {
-            let parsed = false;
-
-            // Attempt JSON parsing first
-            try {
-              const json = JSON.parse(fileContent);
-              if (Array.isArray(json.data)) {
-                json.data.forEach(point => {
-                  const { n, V1, V2, V3, I1, I2, I3 } = point;
-                  if ([n, V1, V2, V3, I1, I2, I3].every(v => v !== undefined)) {
-                    allData.push({
-                      n: Number(n),
-                      V1: Number(V1),
-                      V2: Number(V2),
-                      V3: Number(V3),
-                      I1: Number(I1),
-                      I2: Number(I2),
-                      I3: Number(I3),
-                    });
-                  }
-                });
-                parsed = true;
-              }
-            } catch {
-              // Ignore JSON parse errors and attempt CSV parsing
-            }
-
-            if (!parsed) {
-              const lines = fileContent.trim().split(/\r?\n/);
-              lines.forEach(line => {
-                if (!line || line.startsWith('#')) return;
-                const parts = line.split(',');
-                if (parts[0] === 'n') return;
-                if (parts.length >= 7) {
-                  const [n, V1, V2, V3, I1, I2, I3] = parts.map(Number);
-                  if (![n, V1, V2, V3, I1, I2, I3].some(Number.isNaN)) {
-                    allData.push({ n, V1, V2, V3, I1, I2, I3 });
-                  }
-                }
-              });
-            }
-          });
+        if (data.success && data.file && Array.isArray(data.file.data)) {
+          const allData = data.file.data.map(pt => ({
+            n: Number(pt.n),
+            V1: Number(pt.V1),
+            V2: Number(pt.V2),
+            V3: Number(pt.V3),
+            I1: Number(pt.I1),
+            I2: Number(pt.I2),
+            I3: Number(pt.I3),
+          }));
 
           allData.sort((a, b) => a.n - b.n);
           setDataPoints(allData);
+          setMeta({
+            faultType: data.file.faultType || '',
+            faultLocation: data.file.faultLocation || '',
+            date: data.file.date || '',
+            time: data.file.time || '',
+          });
+        } else {
+          setDataPoints([]);
         }
       } catch (error) {
         console.error('Error fetching data:', error);
+        setDataPoints([]);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -153,6 +137,14 @@ const GraphPage = () => {
   return (
     <div className="container">
       <h1 className="title">Sensor Data</h1>
+      {meta.faultType && (
+        <div className="mb-4 text-sm">
+          <p><strong>Fault Type:</strong> {meta.faultType}</p>
+          <p><strong>Fault Location:</strong> {meta.faultLocation}</p>
+          <p><strong>Date:</strong> {meta.date}</p>
+          <p><strong>Time:</strong> {meta.time}</p>
+        </div>
+      )}
       <div className="dropdown-container">
         <select onChange={(e) => setSelectedFile(e.target.value)} value={selectedFile}>
           {filenames.map(file => (
@@ -174,7 +166,9 @@ const GraphPage = () => {
           </label>
         ))}
       </div>
-      {voltageChart && currentChart ? (
+      {loading ? (
+        <p>Loading data...</p>
+      ) : voltageChart && currentChart ? (
         <>
           <div className="chart-container">
             <h2 className="text-xl font-semibold mb-2">Voltage</h2>
@@ -186,7 +180,7 @@ const GraphPage = () => {
           </div>
         </>
       ) : (
-        <p>Loading data...</p>
+        <p>No data available.</p>
       )}
     </div>
   );

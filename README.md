@@ -11,8 +11,8 @@ A Next.js 15 application that stores uploaded fault data in compact JSON files a
 ## Core Features
 1. **Upload JSON files** using `POST /api/upload`.
 2. **List available files** or **retrieve JSON contents** with `GET /api/data`.
-3. **Visualize data** on the Graph page where users choose a file and see voltage channels (`V1`, `V2`, `V3`) and current channels (`I1`, `I2`, `I3`) plotted against sample index in separate charts.
-4. **Dummy data script** (`send-dummy-data.sh`) generates sine-wave fault JSON samples and posts them to the upload endpoint for testing.
+3. **Visualize data** on the Graph page where users choose a file, review its fault metadata, and see voltage channels (`V1`, `V2`, `V3`) and current channels (`I1`, `I2`, `I3`) plotted against sample index in separate charts.
+4. **Dummy data script** (`send-dummy-data.sh`) generates sine-wave fault JSON samples with per-channel random amplitudes and a random 40–60 Hz frequency, then posts them to the upload endpoint for testing.
 
 ## Data Flow
 1. Client uploads a JSON file to `/api/upload`.
