@@ -24,7 +24,8 @@ ChartJS.register(
 );
 
 const GraphPage = () => {
-  const [chartData, setChartData] = useState(null);
+  const [voltageChart, setVoltageChart] = useState(null);
+  const [currentChart, setCurrentChart] = useState(null);
   const [filenames, setFilenames] = useState([]);
   const [selectedFile, setSelectedFile] = useState('');
   const [dataPoints, setDataPoints] = useState([]);
@@ -123,22 +124,30 @@ const GraphPage = () => {
 
   useEffect(() => {
     if (dataPoints.length === 0) {
-      setChartData(null);
+      setVoltageChart(null);
+      setCurrentChart(null);
       return;
     }
+
     const labels = dataPoints.map(d => d.n);
-    const chartJsData = {
+
+    setVoltageChart({
       labels,
       datasets: [
         { label: 'V1', data: dataPoints.map(d => d.V1), borderColor: 'red', tension: 0.1, hidden: !visible.V1 },
         { label: 'V2', data: dataPoints.map(d => d.V2), borderColor: 'green', tension: 0.1, hidden: !visible.V2 },
         { label: 'V3', data: dataPoints.map(d => d.V3), borderColor: 'blue', tension: 0.1, hidden: !visible.V3 },
+      ],
+    });
+
+    setCurrentChart({
+      labels,
+      datasets: [
         { label: 'I1', data: dataPoints.map(d => d.I1), borderColor: 'orange', tension: 0.1, hidden: !visible.I1 },
         { label: 'I2', data: dataPoints.map(d => d.I2), borderColor: 'purple', tension: 0.1, hidden: !visible.I2 },
         { label: 'I3', data: dataPoints.map(d => d.I3), borderColor: 'brown', tension: 0.1, hidden: !visible.I3 },
       ],
-    };
-    setChartData(chartJsData);
+    });
   }, [dataPoints, visible]);
 
   return (
@@ -165,10 +174,17 @@ const GraphPage = () => {
           </label>
         ))}
       </div>
-      {chartData ? (
-        <div className="chart-container">
-          <Line data={chartData} />
-        </div>
+      {voltageChart && currentChart ? (
+        <>
+          <div className="chart-container">
+            <h2 className="text-xl font-semibold mb-2">Voltage</h2>
+            <Line data={voltageChart} />
+          </div>
+          <div className="chart-container mt-8">
+            <h2 className="text-xl font-semibold mb-2">Current</h2>
+            <Line data={currentChart} />
+          </div>
+        </>
       ) : (
         <p>Loading data...</p>
       )}
