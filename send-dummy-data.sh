@@ -58,8 +58,9 @@ if ! curl -s --head "$STATUS_URL" | head -n 1 | grep "200 OK" >/dev/null; then
   exit 1
 fi
 
-JSON_PAYLOAD="{\"faultType\":\"$FAULT_TYPE\",\"faultLocation\":\"$FAULT_LOCATION\",\"date\":\"$CURRENT_DATE\",\"time\":\"$CURRENT_TIME\",\"data\":[
-
+read -r -d '' JSON_PAYLOAD <<JSON_START
+{"faultType":"$FAULT_TYPE","faultLocation":"$FAULT_LOCATION","date":"$CURRENT_DATE","time":"$CURRENT_TIME","data":[
+JSON_START
 for ((i = 1; i <= SAMPLES; i++)); do
   ROW=$(awk -v i=$i -v freq=$FREQUENCY -v vamp=$V_AMP -v voff=$V_OFFSET -v iamp=$I_AMP -v samples=$SAMPLES 'BEGIN{
     ang = 2 * 3.14159265359 * freq * i / samples;
