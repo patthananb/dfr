@@ -16,9 +16,8 @@ FAULT_LOCATION=${FAULT_LOCATIONS[$RANDOM % ${#FAULT_LOCATIONS[@]}]}
 CURRENT_DATE=$(date +"%Y-%m-%d")
 CURRENT_TIME=$(date +"%H:%M:%S")
 
-# === Clear existing data files ===
+# === Ensure data directory exists ===
 mkdir -p "$DATA_DIR"
-find "$DATA_DIR" -type f ! -name '.gitkeep' -delete
 
 # === Generate Sine Wave JSON Data ===
 SAMPLES=1000
