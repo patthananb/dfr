@@ -2,7 +2,6 @@
 
 # === Configuration ===
 API_URL="http://localhost:3000/api/upload"
-STATUS_URL="http://localhost:3000/"
 
 # === Fault Metadata ===
 FAULT_TYPES=("line_to_ground" "line_to_line" "three_phase")
@@ -18,13 +17,6 @@ CURRENT_TIME=$(date +"%H:%M:%S")
 
 # === Clear existing data files ===
 find data -type f ! -name '.gitkeep' -delete
-
-# === Check if Next.js server is running ===
-if ! curl -s --head "$STATUS_URL" | head -n 1 | grep "200 OK" >/dev/null; then
-  echo "Error: Could not connect to the server at $API_URL."
-  echo "Please make sure your Next.js server is running ('npm run dev')."
-  exit 1
-fi
 
 # === Generate Sine Wave JSON Data ===
 SAMPLES=1000
@@ -69,12 +61,16 @@ echo "Frequencies (Hz): v1=$V1_FREQ v2=$V2_FREQ v3=$V3_FREQ i1=$I1_FREQ i2=$I2_F
 echo "Filename: $FILENAME"
 echo "---------------------------------"
 
-# === Upload JSON ===
-curl -s -X POST \
-  -F "file=@-;type=application/json;filename=$FILENAME" \
-  "$API_URL" <<EOF
-$JSON_PAYLOAD
-EOF
+# === Write JSON locally ===
+echo "$JSON_PAYLOAD" > "data/$FILENAME"
 
-echo -e "\n✅ Successfully sent data to $API_URL"
+# === Upload JSON ===
+HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+  -F "file=@data/$FILENAME;type=application/json" "$API_URL")
+
+if [[ "$HTTP_STATUS" == 2* ]]; then
+  echo "✅ Successfully sent data to $API_URL"
+else
+  echo "⚠️ Failed to send data to $API_URL (status: $HTTP_STATUS)"
+fi
 

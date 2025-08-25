@@ -44,9 +44,10 @@ const GraphPage = () => {
         const res = await fetch('/api/data');
         const data = await res.json();
         if (data.success) {
-          setFilenames(data.filenames);
-          if (data.filenames.length > 0) {
-            setSelectedFile(data.filenames[0]);
+          const files = data.filenames.filter(name => name !== '.gitkeep');
+          setFilenames(files);
+          if (files.length > 0) {
+            setSelectedFile(files[0]);
           }
         }
       } catch (error) {
