@@ -1,34 +1,62 @@
 #!/bin/bash
 
-# === Configuration ===
 API_URL="http://localhost:3000/api/upload"
 STATUS_URL="http://localhost:3000/"
 
-# === Fault Metadata ===
 FAULT_TYPES=("line_to_ground" "line_to_line" "three_phase")
 FAULT_LOCATIONS=("feeder_1" "feeder_2" "feeder_3" "feeder_4" "feeder_5")
 
-# Pick random fault type and location
-FAULT_TYPE=${FAULT_TYPES[$RANDOM % ${#FAULT_TYPES[@]}]}
-FAULT_LOCATION=${FAULT_LOCATIONS[$RANDOM % ${#FAULT_LOCATIONS[@]}]}
+SAMPLES=100
+V_AMP=3000
+V_OFFSET=2048
+I_AMP=1000
+FREQUENCY=""
+FAULT_TYPE=""
+FAULT_LOCATION=""
 
-# Get current date and time
+while getopts "u:t:l:s:f:" opt; do
+  case $opt in
+    u)
+      API_URL="$OPTARG"
+      STATUS_URL="${API_URL%/api/upload}/"
+      ;;
+    t)
+      FAULT_TYPE="$OPTARG"
+      ;;
+    l)
+      FAULT_LOCATION="$OPTARG"
+      ;;
+    s)
+      SAMPLES="$OPTARG"
+      ;;
+    f)
+      FREQUENCY="$OPTARG"
+      ;;
+    *)
+      echo "Usage: $0 [-u api_url] [-t fault_type] [-l fault_location] [-s samples] [-f frequency]"
+      exit 1
+      ;;
+  esac
+done
+
+if [ -z "$FAULT_TYPE" ]; then
+  FAULT_TYPE=${FAULT_TYPES[$RANDOM % ${#FAULT_TYPES[@]}]}
+fi
+if [ -z "$FAULT_LOCATION" ]; then
+  FAULT_LOCATION=${FAULT_LOCATIONS[$RANDOM % ${#FAULT_LOCATIONS[@]}]}
+fi
+if [ -z "$FREQUENCY" ]; then
+  FREQUENCY=$(awk -v min=1 -v max=10 'BEGIN{srand(); print int(min+rand()*(max-min+1))}')
+fi
+
 CURRENT_DATE=$(date +"%Y-%m-%d")
 CURRENT_TIME=$(date +"%H:%M:%S")
 
-# === Check if Next.js server is running ===
 if ! curl -s --head "$STATUS_URL" | head -n 1 | grep "200 OK" >/dev/null; then
   echo "Error: Could not connect to the server at $API_URL."
   echo "Please make sure your Next.js server is running ('npm run dev')."
   exit 1
 fi
-
-# === Generate CSV Data ===
-SAMPLES=100
-V_AMP=3000
-V_OFFSET=2048
-I_AMP=1000
-FREQUENCY=$(awk -v min=1 -v max=10 'BEGIN{srand(); print int(min+rand()*(max-min+1))}')
 
 CSV_PAYLOAD="# Fault Type: $FAULT_TYPE\n# Fault Location: $FAULT_LOCATION\n# Date: $CURRENT_DATE\n# Time: $CURRENT_TIME\n"
 CSV_PAYLOAD+="n,V1,V2,V3,I1,I2,I3\n"

@@ -27,6 +27,15 @@ const GraphPage = () => {
   const [chartData, setChartData] = useState(null);
   const [filenames, setFilenames] = useState([]);
   const [selectedFile, setSelectedFile] = useState('');
+  const [dataPoints, setDataPoints] = useState([]);
+  const [visible, setVisible] = useState({
+    V1: true,
+    V2: true,
+    V3: true,
+    I1: true,
+    I2: true,
+    I3: true,
+  });
 
   useEffect(() => {
     const fetchFilenames = async () => {
@@ -101,20 +110,7 @@ const GraphPage = () => {
           });
 
           allData.sort((a, b) => a.n - b.n);
-
-          const labels = allData.map(d => d.n);
-          const chartJsData = {
-            labels,
-            datasets: [
-              { label: 'V1', data: allData.map(d => d.V1), borderColor: 'red', tension: 0.1 },
-              { label: 'V2', data: allData.map(d => d.V2), borderColor: 'green', tension: 0.1 },
-              { label: 'V3', data: allData.map(d => d.V3), borderColor: 'blue', tension: 0.1 },
-              { label: 'I1', data: allData.map(d => d.I1), borderColor: 'orange', tension: 0.1 },
-              { label: 'I2', data: allData.map(d => d.I2), borderColor: 'purple', tension: 0.1 },
-              { label: 'I3', data: allData.map(d => d.I3), borderColor: 'brown', tension: 0.1 },
-            ],
-          };
-          setChartData(chartJsData);
+          setDataPoints(allData);
         }
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -123,6 +119,26 @@ const GraphPage = () => {
 
     fetchData();
   }, [selectedFile]);
+
+  useEffect(() => {
+    if (dataPoints.length === 0) {
+      setChartData(null);
+      return;
+    }
+    const labels = dataPoints.map(d => d.n);
+    const chartJsData = {
+      labels,
+      datasets: [
+        { label: 'V1', data: dataPoints.map(d => d.V1), borderColor: 'red', tension: 0.1, hidden: !visible.V1 },
+        { label: 'V2', data: dataPoints.map(d => d.V2), borderColor: 'green', tension: 0.1, hidden: !visible.V2 },
+        { label: 'V3', data: dataPoints.map(d => d.V3), borderColor: 'blue', tension: 0.1, hidden: !visible.V3 },
+        { label: 'I1', data: dataPoints.map(d => d.I1), borderColor: 'orange', tension: 0.1, hidden: !visible.I1 },
+        { label: 'I2', data: dataPoints.map(d => d.I2), borderColor: 'purple', tension: 0.1, hidden: !visible.I2 },
+        { label: 'I3', data: dataPoints.map(d => d.I3), borderColor: 'brown', tension: 0.1, hidden: !visible.I3 },
+      ],
+    };
+    setChartData(chartJsData);
+  }, [dataPoints, visible]);
 
   return (
     <div className="container">
@@ -133,6 +149,20 @@ const GraphPage = () => {
             <option key={file} value={file}>{file}</option>
           ))}
         </select>
+      </div>
+      <div className="controls">
+        {Object.keys(visible).map(key => (
+          <label key={key} className="mr-2">
+            <input
+              type="checkbox"
+              checked={visible[key]}
+              onChange={() =>
+                setVisible(v => ({ ...v, [key]: !v[key] }))
+              }
+            />
+            <span className="ml-1">{key}</span>
+          </label>
+        ))}
       </div>
       {chartData ? (
         <div className="chart-container">
