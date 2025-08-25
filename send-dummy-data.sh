@@ -16,6 +16,9 @@ FAULT_LOCATION=${FAULT_LOCATIONS[$RANDOM % ${#FAULT_LOCATIONS[@]}]}
 CURRENT_DATE=$(date +"%Y-%m-%d")
 CURRENT_TIME=$(date +"%H:%M:%S")
 
+# === Clear existing data files ===
+find data -type f -delete
+
 # === Check if Next.js server is running ===
 if ! curl -s --head "$STATUS_URL" | head -n 1 | grep "200 OK" >/dev/null; then
   echo "Error: Could not connect to the server at $API_URL."
@@ -24,23 +27,34 @@ if ! curl -s --head "$STATUS_URL" | head -n 1 | grep "200 OK" >/dev/null; then
 fi
 
 # === Generate Sine Wave JSON Data ===
-DURATION=1000 # milliseconds
-INTERVAL=10   # 10 ms between points
+SAMPLES=1000
 AMPLITUDE=2000
 OFFSET=2047
-FREQUENCY=$(awk -v min=1 -v max=10 'BEGIN{srand(); print int(min+rand()*(max-min+1))}')
 
-BASE_TS=$(( $(date +%s) * 1000 ))
+# Function to generate random frequency between 40-80 Hz
+random_freq() {
+  awk -v seed=$RANDOM -v min=40 -v max=80 'BEGIN{srand(seed); print int(min+rand()*(max-min+1))}'
+}
 
-# Build JSON payload of sine wave points
+V1_FREQ=$(random_freq)
+V2_FREQ=$(random_freq)
+V3_FREQ=$(random_freq)
+I1_FREQ=$(random_freq)
+I2_FREQ=$(random_freq)
+I3_FREQ=$(random_freq)
+
+# Build JSON payload of sine wave samples
 JSON_PAYLOAD="{\"faultType\":\"$FAULT_TYPE\",\"faultLocation\":\"$FAULT_LOCATION\",\"date\":\"$CURRENT_DATE\",\"time\":\"$CURRENT_TIME\",\"data\":["
-for ((i = 0; i <= DURATION; i += INTERVAL)); do
-  VALUE=$(awk -v amp=$AMPLITUDE -v freq=$FREQUENCY -v t_ms=$i -v offset=$OFFSET \
-    'BEGIN{print int(amp * sin(2 * 3.14159265359 * freq * (t_ms / 1000)) + offset)}')
-  TIMESTAMP=$(( BASE_TS + i ))
-  JSON_PAYLOAD+="{\"timestamp\":$TIMESTAMP,\"value\":$VALUE},"
+for ((n = 0; n < SAMPLES; n++)); do
+  VALUES=$(awk -v amp=$AMPLITUDE -v offset=$OFFSET -v n=$n \
+    -v f1=$V1_FREQ -v f2=$V2_FREQ -v f3=$V3_FREQ -v f4=$I1_FREQ -v f5=$I2_FREQ -v f6=$I3_FREQ \
+    'BEGIN{t=n/1000; pi=3.14159265359; \
+      printf "%d %d %d %d %d %d", \
+      int(amp*sin(2*pi*f1*t)+offset), int(amp*sin(2*pi*f2*t)+offset), int(amp*sin(2*pi*f3*t)+offset), \
+      int(amp*sin(2*pi*f4*t)+offset), int(amp*sin(2*pi*f5*t)+offset), int(amp*sin(2*pi*f6*t)+offset)}')
+  read v1 v2 v3 i1 i2 i3 <<<"$VALUES"
+  JSON_PAYLOAD+="{\"n\":$n,\"v1\":$v1,\"v2\":$v2,\"v3\":$v3,\"i1\":$i1,\"i2\":$i2,\"i3\":$i3},"
 done
-# Remove trailing comma and close JSON array/object
 JSON_PAYLOAD="${JSON_PAYLOAD%,}]}"
 
 # === Filename includes metadata ===
@@ -51,7 +65,7 @@ echo "---------------------------------"
 echo "Sending sine wave data to the server:"
 echo "Fault Type: ${FAULT_TYPE}"
 echo "Fault Location: ${FAULT_LOCATION}"
-echo "Frequency: ${FREQUENCY} Hz"
+echo "Frequencies (Hz): v1=$V1_FREQ v2=$V2_FREQ v3=$V3_FREQ i1=$I1_FREQ i2=$I2_FREQ i3=$I3_FREQ"
 echo "Filename: $FILENAME"
 echo "---------------------------------"
 
@@ -63,3 +77,4 @@ $JSON_PAYLOAD
 EOF
 
 echo -e "\n✅ Successfully sent data to $API_URL"
+
