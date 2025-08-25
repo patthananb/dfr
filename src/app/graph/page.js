@@ -24,9 +24,19 @@ ChartJS.register(
 );
 
 const GraphPage = () => {
-  const [chartData, setChartData] = useState(null);
+  const [voltageChart, setVoltageChart] = useState(null);
+  const [currentChart, setCurrentChart] = useState(null);
   const [filenames, setFilenames] = useState([]);
   const [selectedFile, setSelectedFile] = useState('');
+  const [dataPoints, setDataPoints] = useState([]);
+  const [visible, setVisible] = useState({
+    V1: true,
+    V2: true,
+    V3: true,
+    I1: true,
+    I2: true,
+    I3: true,
+  });
 
   useEffect(() => {
     const fetchFilenames = async () => {
@@ -34,9 +44,10 @@ const GraphPage = () => {
         const res = await fetch('/api/data');
         const data = await res.json();
         if (data.success) {
-          setFilenames(data.filenames);
-          if (data.filenames.length > 0) {
-            setSelectedFile(data.filenames[0]);
+          const jsonFiles = (data.filenames || []).filter(name => name.endsWith('.json'));
+          setFilenames(jsonFiles);
+          if (jsonFiles.length > 0) {
+            setSelectedFile(jsonFiles[0]);
           }
         }
       } catch (error) {
@@ -60,56 +71,48 @@ const GraphPage = () => {
           data.files.forEach(fileContent => {
             let parsed = false;
 
-            // Try parsing as JSON first
+            // Attempt JSON parsing first
             try {
               const json = JSON.parse(fileContent);
               if (Array.isArray(json.data)) {
                 json.data.forEach(point => {
-                  if (point.timestamp !== undefined && point.value !== undefined) {
+                  const { n, V1, V2, V3, I1, I2, I3 } = point;
+                  if ([n, V1, V2, V3, I1, I2, I3].every(v => v !== undefined)) {
                     allData.push({
-                      timestamp: new Date(point.timestamp),
-                      value: parseFloat(point.value),
+                      n: Number(n),
+                      V1: Number(V1),
+                      V2: Number(V2),
+                      V3: Number(V3),
+                      I1: Number(I1),
+                      I2: Number(I2),
+                      I3: Number(I3),
                     });
                   }
                 });
                 parsed = true;
               }
             } catch {
-              // Ignore JSON parse errors and attempt CSV parsing below
+              // Ignore JSON parse errors and attempt CSV parsing
             }
 
             if (!parsed) {
               const lines = fileContent.trim().split(/\r?\n/);
-              lines.forEach((line, index) => {
-                if (!line) return;
-                if (index === 0 && line.includes('timestamp')) return;
-                const [ts, val] = line.split(',');
-                const timestamp = Number(ts);
-                const value = Number(val);
-                if (!Number.isNaN(timestamp) && !Number.isNaN(value)) {
-                  allData.push({
-                    timestamp: new Date(timestamp),
-                    value,
-                  });
+              lines.forEach(line => {
+                if (!line || line.startsWith('#')) return;
+                const parts = line.split(',');
+                if (parts[0] === 'n') return;
+                if (parts.length >= 7) {
+                  const [n, V1, V2, V3, I1, I2, I3] = parts.map(Number);
+                  if (![n, V1, V2, V3, I1, I2, I3].some(Number.isNaN)) {
+                    allData.push({ n, V1, V2, V3, I1, I2, I3 });
+                  }
                 }
               });
             }
           });
 
-          allData.sort((a, b) => a.timestamp - b.timestamp);
-
-          const chartJsData = {
-            labels: allData.map(d => d.timestamp.toLocaleTimeString()),
-            datasets: [
-              {
-                label: 'Sensor Value',
-                data: allData.map(d => d.value),
-                borderColor: 'rgb(75, 192, 192)',
-                tension: 0.1,
-              },
-            ],
-          };
-          setChartData(chartJsData);
+          allData.sort((a, b) => a.n - b.n);
+          setDataPoints(allData);
         }
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -118,6 +121,34 @@ const GraphPage = () => {
 
     fetchData();
   }, [selectedFile]);
+
+  useEffect(() => {
+    if (dataPoints.length === 0) {
+      setVoltageChart(null);
+      setCurrentChart(null);
+      return;
+    }
+
+    const labels = dataPoints.map(d => d.n);
+
+    setVoltageChart({
+      labels,
+      datasets: [
+        { label: 'V1', data: dataPoints.map(d => d.V1), borderColor: 'red', tension: 0.1, hidden: !visible.V1 },
+        { label: 'V2', data: dataPoints.map(d => d.V2), borderColor: 'green', tension: 0.1, hidden: !visible.V2 },
+        { label: 'V3', data: dataPoints.map(d => d.V3), borderColor: 'blue', tension: 0.1, hidden: !visible.V3 },
+      ],
+    });
+
+    setCurrentChart({
+      labels,
+      datasets: [
+        { label: 'I1', data: dataPoints.map(d => d.I1), borderColor: 'orange', tension: 0.1, hidden: !visible.I1 },
+        { label: 'I2', data: dataPoints.map(d => d.I2), borderColor: 'purple', tension: 0.1, hidden: !visible.I2 },
+        { label: 'I3', data: dataPoints.map(d => d.I3), borderColor: 'brown', tension: 0.1, hidden: !visible.I3 },
+      ],
+    });
+  }, [dataPoints, visible]);
 
   return (
     <div className="container">
@@ -129,10 +160,31 @@ const GraphPage = () => {
           ))}
         </select>
       </div>
-      {chartData ? (
-        <div className="chart-container">
-          <Line data={chartData} />
-        </div>
+      <div className="controls">
+        {Object.keys(visible).map(key => (
+          <label key={key} className="mr-2">
+            <input
+              type="checkbox"
+              checked={visible[key]}
+              onChange={() =>
+                setVisible(v => ({ ...v, [key]: !v[key] }))
+              }
+            />
+            <span className="ml-1">{key}</span>
+          </label>
+        ))}
+      </div>
+      {voltageChart && currentChart ? (
+        <>
+          <div className="chart-container">
+            <h2 className="text-xl font-semibold mb-2">Voltage</h2>
+            <Line data={voltageChart} />
+          </div>
+          <div className="chart-container mt-8">
+            <h2 className="text-xl font-semibold mb-2">Current</h2>
+            <Line data={currentChart} />
+          </div>
+        </>
       ) : (
         <p>Loading data...</p>
       )}
