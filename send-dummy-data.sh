@@ -58,8 +58,7 @@ if ! curl -s --head "$STATUS_URL" | head -n 1 | grep "200 OK" >/dev/null; then
   exit 1
 fi
 
-CSV_PAYLOAD="# Fault Type: $FAULT_TYPE\n# Fault Location: $FAULT_LOCATION\n# Date: $CURRENT_DATE\n# Time: $CURRENT_TIME\n"
-CSV_PAYLOAD+="n,V1,V2,V3,I1,I2,I3\n"
+JSON_PAYLOAD="{\"faultType\":\"$FAULT_TYPE\",\"faultLocation\":\"$FAULT_LOCATION\",\"date\":\"$CURRENT_DATE\",\"time\":\"$CURRENT_TIME\",\"data\":["
 
 for ((i = 1; i <= SAMPLES; i++)); do
   ROW=$(awk -v i=$i -v freq=$FREQUENCY -v vamp=$V_AMP -v voff=$V_OFFSET -v iamp=$I_AMP -v samples=$SAMPLES 'BEGIN{
@@ -70,13 +69,18 @@ for ((i = 1; i <= SAMPLES; i++)); do
     I1 = int(iamp * sin(ang));
     I2 = int(iamp * sin(ang - 2 * 3.14159265359 / 3));
     I3 = int(iamp * sin(ang + 2 * 3.14159265359 / 3));
-    printf "%d,%d,%d,%d,%d,%d,%d", i, V1, V2, V3, I1, I2, I3;
+    printf("{\\\"n\\\":%d,\\\"V1\\\":%d,\\\"V2\\\":%d,\\\"V3\\\":%d,\\\"I1\\\":%d,\\\"I2\\\":%d,\\\"I3\\\":%d}", i, V1, V2, V3, I1, I2, I3);
   }')
-  CSV_PAYLOAD+="$ROW\n"
+  JSON_PAYLOAD+="$ROW"
+  if [ $i -lt $SAMPLES ]; then
+    JSON_PAYLOAD+=",";
+  fi
 done
 
+JSON_PAYLOAD+="]}"
+
 # === Filename includes metadata ===
-FILENAME="fault_${FAULT_TYPE}_${FAULT_LOCATION}_${CURRENT_DATE//-/}_${CURRENT_TIME//:/}.csv"
+FILENAME="fault_${FAULT_TYPE}_${FAULT_LOCATION}_${CURRENT_DATE//-/}_${CURRENT_TIME//:/}.json"
 
 # === Display Info ===
 echo "---------------------------------"
@@ -87,11 +91,11 @@ echo "Frequency: ${FREQUENCY} Hz"
 echo "Filename: $FILENAME"
 echo "---------------------------------"
 
-# === Upload CSV ===
+# === Upload JSON ===
 curl -s -X POST \
-  -F "file=@-;type=text/csv;filename=$FILENAME" \
+  -F "file=@-;type=application/json;filename=$FILENAME" \
   "$API_URL" <<EOF
-$CSV_PAYLOAD
+$JSON_PAYLOAD
 EOF
 
 echo -e "\n✅ Successfully sent data to $API_URL"

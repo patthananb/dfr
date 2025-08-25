@@ -43,9 +43,10 @@ const GraphPage = () => {
         const res = await fetch('/api/data');
         const data = await res.json();
         if (data.success) {
-          setFilenames(data.filenames);
-          if (data.filenames.length > 0) {
-            setSelectedFile(data.filenames[0]);
+          const jsonFiles = (data.filenames || []).filter(name => name.endsWith('.json'));
+          setFilenames(jsonFiles);
+          if (jsonFiles.length > 0) {
+            setSelectedFile(jsonFiles[0]);
           }
         }
       } catch (error) {
