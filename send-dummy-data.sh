@@ -61,12 +61,10 @@ echo "Frequencies (Hz): v1=$V1_FREQ v2=$V2_FREQ v3=$V3_FREQ i1=$I1_FREQ i2=$I2_F
 echo "Filename: $FILENAME"
 echo "---------------------------------"
 
-# === Write JSON locally ===
-echo "$JSON_PAYLOAD" > "data/$FILENAME"
-
 # === Upload JSON ===
 HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
-  -F "file=@data/$FILENAME;type=application/json" "$API_URL")
+  -H "Content-Type: application/json" \
+  --data "$JSON_PAYLOAD" "$API_URL")
 
 if [[ "$HTTP_STATUS" == 2* ]]; then
   echo "✅ Successfully sent data to $API_URL"
