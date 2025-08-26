@@ -179,7 +179,7 @@ const GraphPage = () => {
                     y: {
                       title: {
                         display: true,
-                        text: 'Current [I]'
+                        text: 'Current [A]'
                       }
                     }
                   }
