@@ -9,6 +9,7 @@ This project ingests JSON sensor data and visualizes it with Chart.js.
   - `api/data/route.js` – lists filenames or returns file contents based on the `file` query string.
   - `data/` – runtime storage for JSON files.
 - `send-dummy-data.sh` – helper script to generate synthetic JSON for testing.
+- `send-man-dummy-data.sh` – prompts for manual channel frequencies (enter 'null' for missing waveforms).
 
 ## How It Works
 1. JSON files are generated (e.g., via the dummy-data script) under `data/`.
