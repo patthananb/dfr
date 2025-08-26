@@ -37,6 +37,12 @@ const GraphPage = () => {
     i3: true,
   });
   const [scale, setScale] = useState(1000);
+  const [faultInfo, setFaultInfo] = useState({
+    faultType: '',
+    date: '',
+    time: '',
+    faultLocation: '',
+  });
 
   useEffect(() => {
     const fetchFilenames = async () => {
@@ -68,6 +74,9 @@ const GraphPage = () => {
         const fileContent = result.files[0];
         const json = JSON.parse(fileContent);
         if (!Array.isArray(json.data)) return;
+
+        const { faultType, date, time, faultLocation } = json;
+        setFaultInfo({ faultType, date, time, faultLocation });
 
         const samples = json.data;
         const labels = samples.map(p => p.n);
@@ -121,52 +130,80 @@ const GraphPage = () => {
         </label>
       </div>
       {voltageData && currentData ? (
-        <div className="flex flex-col items-center space-y-8">
-          <div className="w-full max-w-3xl">
-            <h2 className="text-center mb-2">Voltage</h2>
-            <Line
-              data={{
-                labels: voltageData.labels.slice(0, scale),
-                datasets: voltageData.datasets
-                  .filter(ds => visible[ds.key])
-                  .map(ds => ({ ...ds, tension: 0.1, data: ds.data.slice(0, scale) })),
-              }}
-            />
-            <div className="flex justify-center gap-4 mt-2">
-              {['v1', 'v2', 'v3'].map(key => (
-                <label key={key} className="flex items-center gap-1">
-                  <input
-                    type="checkbox"
-                    checked={visible[key]}
-                    onChange={() => toggleVisibility(key)}
-                  />
-                  {key.toUpperCase()}
-                </label>
-              ))}
+        <div className="flex w-full max-w-5xl mx-auto">
+          <div className="flex flex-col items-center space-y-8 flex-grow">
+            <div className="w-full max-w-3xl">
+              <h2 className="text-center mb-2">Voltage</h2>
+              <Line
+                data={{
+                  labels: voltageData.labels.slice(0, scale),
+                  datasets: voltageData.datasets
+                    .filter(ds => visible[ds.key])
+                    .map(ds => ({ ...ds, tension: 0.1, data: ds.data.slice(0, scale) })),
+                }}
+                options={{
+                  scales: {
+                    y: {
+                      title: {
+                        display: true,
+                        text: 'Voltage [V]'
+                      }
+                    }
+                  }
+                }}
+              />
+              <div className="flex justify-center gap-4 mt-2">
+                {['v1', 'v2', 'v3'].map(key => (
+                  <label key={key} className="flex items-center gap-1">
+                    <input
+                      type="checkbox"
+                      checked={visible[key]}
+                      onChange={() => toggleVisibility(key)}
+                    />
+                    {key.toUpperCase()}
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div className="w-full max-w-3xl">
+              <h2 className="text-center mb-2">Current</h2>
+              <Line
+                data={{
+                  labels: currentData.labels.slice(0, scale),
+                  datasets: currentData.datasets
+                    .filter(ds => visible[ds.key])
+                    .map(ds => ({ ...ds, tension: 0.1, data: ds.data.slice(0, scale) })),
+                }}
+                options={{
+                  scales: {
+                    y: {
+                      title: {
+                        display: true,
+                        text: 'Current [I]'
+                      }
+                    }
+                  }
+                }}
+              />
+              <div className="flex justify-center gap-4 mt-2">
+                {['i1', 'i2', 'i3'].map(key => (
+                  <label key={key} className="flex items-center gap-1">
+                    <input
+                      type="checkbox"
+                      checked={visible[key]}
+                      onChange={() => toggleVisibility(key)}
+                    />
+                    {key.toUpperCase()}
+                  </label>
+                ))}
+              </div>
             </div>
           </div>
-          <div className="w-full max-w-3xl">
-            <h2 className="text-center mb-2">Current</h2>
-            <Line
-              data={{
-                labels: currentData.labels.slice(0, scale),
-                datasets: currentData.datasets
-                  .filter(ds => visible[ds.key])
-                  .map(ds => ({ ...ds, tension: 0.1, data: ds.data.slice(0, scale) })),
-              }}
-            />
-            <div className="flex justify-center gap-4 mt-2">
-              {['i1', 'i2', 'i3'].map(key => (
-                <label key={key} className="flex items-center gap-1">
-                  <input
-                    type="checkbox"
-                    checked={visible[key]}
-                    onChange={() => toggleVisibility(key)}
-                  />
-                  {key.toUpperCase()}
-                </label>
-              ))}
-            </div>
+          <div className="w-64 ml-4">
+            <h2 className="mb-2 font-semibold">Fault Info</h2>
+            <p><span className="font-medium">Type:</span> {faultInfo.faultType}</p>
+            <p><span className="font-medium">Date:</span> {faultInfo.date} {faultInfo.time}</p>
+            <p><span className="font-medium">Location:</span> {faultInfo.faultLocation}</p>
           </div>
         </div>
       ) : (
