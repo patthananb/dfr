@@ -101,7 +101,7 @@ const GraphPage = () => {
     <div className="container">
       <h1 className="title">Sensor Data</h1>
       <div className="dropdown-container">
-        <select onChange={(e) => setSelectedFile(e.target.value)} value={selectedFile}>
+        <select style= {{backgroundColor :'black', color : 'white'}} onChange={(e) => setSelectedFile(e.target.value)} value={selectedFile}>
           {filenames.map(file => (
             <option key={file} value={file}>{file}</option>
           ))}
