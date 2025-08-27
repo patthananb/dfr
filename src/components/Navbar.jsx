@@ -10,6 +10,9 @@ export default function Navbar() {
         <li>
           <Link href="/graph" className="hover:underline">Graph</Link>
         </li>
+        <li>
+          <Link href="/firmware" className="hover:underline">Firmware</Link>
+        </li>
       </ul>
     </nav>
   );
