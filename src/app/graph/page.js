@@ -23,6 +23,24 @@ ChartJS.register(
   Legend
 );
 
+const DEFAULT_SCALE = 100;
+
+const formatLabel = str =>
+  str
+    ? str
+        .split('_')
+        .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(' ')
+    : '';
+
+const formatDate = dateStr => {
+  if (!dateStr) return '';
+  const [year, month, day] = dateStr.split('-');
+  return `${day}/${month}/${year}`;
+};
+
+const formatTime = timeStr => (timeStr ? timeStr.slice(0, 5) : '');
+
 const GraphPage = () => {
   const [voltageData, setVoltageData] = useState(null);
   const [currentData, setCurrentData] = useState(null);
@@ -36,7 +54,7 @@ const GraphPage = () => {
     i2: true,
     i3: true,
   });
-  const [scale, setScale] = useState(1000);
+  const [scale, setScale] = useState(DEFAULT_SCALE);
   const [faultInfo, setFaultInfo] = useState({
     faultType: '',
     date: '',
@@ -85,16 +103,16 @@ const GraphPage = () => {
           { key: 'v1', label: 'V1', data: samples.map(p => p.v1), borderColor: 'red' },
           { key: 'v2', label: 'V2', data: samples.map(p => p.v2), borderColor: 'green' },
           { key: 'v3', label: 'V3', data: samples.map(p => p.v3), borderColor: 'blue' },
-        ];
+        ].map(ds => ({ ...ds, min: Math.min(...ds.data), max: Math.max(...ds.data) }));
         const currentDatasets = [
           { key: 'i1', label: 'I1', data: samples.map(p => p.i1), borderColor: 'orange' },
           { key: 'i2', label: 'I2', data: samples.map(p => p.i2), borderColor: 'purple' },
           { key: 'i3', label: 'I3', data: samples.map(p => p.i3), borderColor: 'teal' },
-        ];
+        ].map(ds => ({ ...ds, min: Math.min(...ds.data), max: Math.max(...ds.data) }));
 
         setVoltageData({ labels, datasets: voltageDatasets });
         setCurrentData({ labels, datasets: currentDatasets });
-        setScale(labels.length);
+        setScale(Math.min(labels.length, DEFAULT_SCALE));
       } catch (error) {
         console.error('Error fetching data:', error);
       }
@@ -122,7 +140,7 @@ const GraphPage = () => {
           <input
             type="range"
             min={1}
-            max={voltageData?.labels.length || 1000}
+            max={voltageData?.labels.length || DEFAULT_SCALE}
             value={scale}
             onChange={(e) => setScale(Number(e.target.value))}
             className="w-full"
@@ -142,6 +160,8 @@ const GraphPage = () => {
                     .map(ds => ({ ...ds, tension: 0.1, data: ds.data.slice(0, scale) })),
                 }}
                 options={{
+                  interaction: { mode: 'index', intersect: false },
+                  plugins: { tooltip: { enabled: true } },
                   scales: {
                     y: {
                       title: {
@@ -164,6 +184,13 @@ const GraphPage = () => {
                   </label>
                 ))}
               </div>
+              <div className="grid grid-cols-3 gap-2 text-xs mt-2 text-center">
+                {voltageData.datasets.map(ds => (
+                  <div key={ds.key}>
+                    {ds.label} Min: {ds.min.toFixed(2)} Max: {ds.max.toFixed(2)}
+                  </div>
+                ))}
+              </div>
             </div>
             <div className="w-full max-w-3xl">
               <h2 className="text-center mb-2">Current</h2>
@@ -175,6 +202,8 @@ const GraphPage = () => {
                     .map(ds => ({ ...ds, tension: 0.1, data: ds.data.slice(0, scale) })),
                 }}
                 options={{
+                  interaction: { mode: 'index', intersect: false },
+                  plugins: { tooltip: { enabled: true } },
                   scales: {
                     y: {
                       title: {
@@ -197,13 +226,33 @@ const GraphPage = () => {
                   </label>
                 ))}
               </div>
+              <div className="grid grid-cols-3 gap-2 text-xs mt-2 text-center">
+                {currentData.datasets.map(ds => (
+                  <div key={ds.key}>
+                    {ds.label} Min: {ds.min.toFixed(2)} Max: {ds.max.toFixed(2)}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
           <div className="w-64 ml-4">
             <h2 className="mb-2 font-semibold">Fault Info</h2>
-            <p><span className="font-medium">Type:</span> {faultInfo.faultType}</p>
-            <p><span className="font-medium">Date:</span> {faultInfo.date} {faultInfo.time}</p>
-            <p><span className="font-medium">Location:</span> {faultInfo.faultLocation}</p>
+            <p>
+              <span className="font-medium">Fault Type:</span>{' '}
+              {formatLabel(faultInfo.faultType)}
+            </p>
+            <p>
+              <span className="font-medium">Date:</span>{' '}
+              {formatDate(faultInfo.date)}
+            </p>
+            <p>
+              <span className="font-medium">Time:</span>{' '}
+              {formatTime(faultInfo.time)}
+            </p>
+            <p>
+              <span className="font-medium">Location:</span>{' '}
+              {formatLabel(faultInfo.faultLocation)}
+            </p>
           </div>
         </div>
       ) : (
