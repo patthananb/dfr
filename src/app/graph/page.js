@@ -126,9 +126,13 @@ const GraphPage = () => {
 
   return (
     <div className="container">
-      <h1 className="title">Sensor Data</h1>
-      <div className="dropdown-container">
-        <select style= {{backgroundColor :'black', color : 'white'}} onChange={(e) => setSelectedFile(e.target.value)} value={selectedFile}>
+      <h1 className="title text-xl sm:text-2xl">Sensor Data</h1>
+      <div className="dropdown-container flex justify-center">
+        <select
+          className="bg-black text-white p-2 rounded w-full max-w-xs"
+          onChange={(e) => setSelectedFile(e.target.value)}
+          value={selectedFile}
+        >
           {filenames.map(file => (
             <option key={file} value={file}>{file}</option>
           ))}
@@ -148,7 +152,7 @@ const GraphPage = () => {
         </label>
       </div>
       {voltageData && currentData ? (
-        <div className="flex w-full max-w-5xl mx-auto">
+        <div className="flex flex-col lg:flex-row w-full max-w-5xl mx-auto">
           <div className="flex flex-col items-center space-y-8 flex-grow">
             <div className="w-full max-w-3xl">
               <h2 className="text-center mb-2">Voltage</h2>
@@ -184,7 +188,7 @@ const GraphPage = () => {
                   </label>
                 ))}
               </div>
-              <div className="grid grid-cols-3 gap-2 text-xs mt-2 text-center">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs mt-2 text-center">
                 {voltageData.datasets.map(ds => (
                   <div key={ds.key}>
                     {ds.label} Min: {ds.min.toFixed(2)} Max: {ds.max.toFixed(2)}
@@ -226,7 +230,7 @@ const GraphPage = () => {
                   </label>
                 ))}
               </div>
-              <div className="grid grid-cols-3 gap-2 text-xs mt-2 text-center">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs mt-2 text-center">
                 {currentData.datasets.map(ds => (
                   <div key={ds.key}>
                     {ds.label} Min: {ds.min.toFixed(2)} Max: {ds.max.toFixed(2)}
@@ -235,7 +239,7 @@ const GraphPage = () => {
               </div>
             </div>
           </div>
-          <div className="w-64 ml-4">
+          <div className="w-full lg:w-64 lg:ml-4 mt-8 lg:mt-0">
             <h2 className="mb-2 font-semibold">Fault Info</h2>
             <p>
               <span className="font-medium">Fault Type:</span>{' '}
