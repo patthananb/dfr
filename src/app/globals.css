@@ -29,6 +29,12 @@ body {
   padding: 2rem;
 }
 
+@media (max-width: 640px) {
+  .container {
+    padding: 1rem;
+  }
+}
+
 .title {
   text-align: center;
   margin-bottom: 2rem;
