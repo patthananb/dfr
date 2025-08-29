@@ -124,19 +124,61 @@ const GraphPage = () => {
     setVisible(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
+  const findLatestFault = () => {
+    if (filenames.length === 0) return '';
+    
+    // Parse datetime from filename format: fault_type_location_YYYYMMDD_HHMMSS.json
+    const sortedFiles = filenames
+      .filter(filename => filename.includes('fault_') && filename.endsWith('.json'))
+      .sort((a, b) => {
+        // Extract datetime from filename (last two parts before .json)
+        const extractDateTime = (filename) => {
+          const parts = filename.replace('.json', '').split('_');
+          if (parts.length >= 2) {
+            const datePart = parts[parts.length - 2]; // YYYYMMDD
+            const timePart = parts[parts.length - 1]; // HHMMSS
+            return datePart + timePart; // YYYYMMDDHHMMSS for comparison
+          }
+          return '';
+        };
+        
+        const dateTimeA = extractDateTime(a);
+        const dateTimeB = extractDateTime(b);
+        return dateTimeB.localeCompare(dateTimeA); // Sort descending (latest first)
+      });
+    
+    return sortedFiles[0] || '';
+  };
+
+  const goToLatestFault = () => {
+    const latestFile = findLatestFault();
+    if (latestFile) {
+      setSelectedFile(latestFile);
+    }
+  };
+
   return (
     <div className="container">
       <h1 className="title text-xl sm:text-2xl">Sensor Data</h1>
       <div className="dropdown-container flex justify-center">
-        <select
-          className="bg-black text-white p-2 rounded w-full max-w-xs"
-          onChange={(e) => setSelectedFile(e.target.value)}
-          value={selectedFile}
-        >
-          {filenames.map(file => (
-            <option key={file} value={file}>{file}</option>
-          ))}
-        </select>
+        <div className="flex flex-col sm:flex-row items-center gap-4">
+          <select
+            className="bg-black text-white p-2 rounded w-full max-w-xs"
+            onChange={(e) => setSelectedFile(e.target.value)}
+            value={selectedFile}
+          >
+            {filenames.map(file => (
+              <option key={file} value={file}>{file}</option>
+            ))}
+          </select>
+          <button
+            onClick={goToLatestFault}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded whitespace-nowrap"
+            disabled={filenames.length === 0}
+          >
+            Go to Latest Fault
+          </button>
+        </div>
       </div>
       <div className="w-full max-w-3xl mx-auto my-4">
         <label className="flex flex-col items-center">
