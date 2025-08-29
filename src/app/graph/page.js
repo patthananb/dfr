@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -42,6 +43,8 @@ const formatDate = dateStr => {
 const formatTime = timeStr => (timeStr ? timeStr.slice(0, 5) : '');
 
 const GraphPage = () => {
+  const searchParams = useSearchParams();
+  const fileParam = searchParams.get('file');
   const [voltageData, setVoltageData] = useState(null);
   const [currentData, setCurrentData] = useState(null);
   const [filenames, setFilenames] = useState([]);
@@ -71,7 +74,11 @@ const GraphPage = () => {
           const files = data.filenames.filter(name => name !== '.gitkeep');
           setFilenames(files);
           if (files.length > 0) {
-            setSelectedFile(files[0]);
+            if (fileParam && files.includes(fileParam)) {
+              setSelectedFile(fileParam);
+            } else {
+              setSelectedFile(files[0]);
+            }
           }
         }
       } catch (error) {
@@ -79,7 +86,7 @@ const GraphPage = () => {
       }
     };
     fetchFilenames();
-  }, []);
+  }, [fileParam]);
 
   useEffect(() => {
     const fetchData = async () => {
