@@ -36,39 +36,39 @@ export default async function Home() {
   }
 
   return (
-    <main className="flex flex-col items-center justify-center min-h-screen p-4 sm:p-8">
-      <h1 className="text-3xl sm:text-4xl font-bold mb-8 text-center">
-        Digital Fault Recorder
-      </h1>
-      {fault ? (
-        <div className="bg-gray-100 p-4 rounded w-full max-w-md mb-4 text-center space-y-1">
-          <p>
-            <strong>Fault Type:</strong> {formatLabel(fault.faultType)}
-          </p>
-          <p>
-            <strong>Date:</strong> {formatDate(fault.date)} {formatTime(fault.time)}
-          </p>
-          <p>
-            <strong>Location:</strong> {formatLabel(fault.faultLocation)}
-          </p>
-        </div>
-      ) : (
-        <p className="mb-4">No faults recorded.</p>
-      )}
-      {fault && (
+    <main className="flex flex-col items-center justify-center flex-1 p-4 sm:p-8">
+      <div className="w-full max-w-xl bg-white/80 backdrop-blur-sm rounded-xl shadow-lg p-6 text-center space-y-6">
+        <h1 className="text-3xl sm:text-4xl font-bold">Digital Fault Recorder</h1>
+        {fault ? (
+          <div className="bg-gray-50 p-4 rounded-lg shadow-inner space-y-1">
+            <p>
+              <strong>Fault Type:</strong> {formatLabel(fault.faultType)}
+            </p>
+            <p>
+              <strong>Date:</strong> {formatDate(fault.date)} {formatTime(fault.time)}
+            </p>
+            <p>
+              <strong>Location:</strong> {formatLabel(fault.faultLocation)}
+            </p>
+          </div>
+        ) : (
+          <p className="text-gray-700">No faults recorded.</p>
+        )}
+        {fault && (
+          <Link
+            href={`/graph?file=${latestFile}`}
+            className="px-6 py-3 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors block sm:inline-block w-full sm:w-auto"
+          >
+            View Latest Fault
+          </Link>
+        )}
         <Link
-          href={`/graph?file=${latestFile}`}
-          className="bg-blue-600 text-white px-6 py-3 rounded hover:bg-blue-700 w-full sm:w-auto text-center mb-2"
+          href="/graph"
+          className="px-6 py-3 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors block sm:inline-block w-full sm:w-auto"
         >
-          View Latest Fault
+          Go to Graph
         </Link>
-      )}
-      <Link
-        href="/graph"
-        className="bg-blue-600 text-white px-6 py-3 rounded hover:bg-blue-700 w-full sm:w-auto text-center"
-      >
-        Go to Graph
-      </Link>
+      </div>
     </main>
   );
 }
