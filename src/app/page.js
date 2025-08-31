@@ -36,11 +36,11 @@ export default async function Home() {
   }
 
   return (
-    <main className="flex flex-col items-center justify-center flex-1 p-4 sm:p-8">
-      <div className="w-full max-w-xl bg-white/80 backdrop-blur-sm rounded-xl shadow-lg p-6 text-center space-y-6">
+    <main className="flex flex-col items-center justify-center flex-1 p-4 sm:p-8 text-gray-100">
+      <div className="w-full max-w-xl bg-gray-800/80 backdrop-blur-sm rounded-xl shadow-lg p-6 text-center space-y-6">
         <h1 className="text-3xl sm:text-4xl font-bold">Digital Fault Recorder</h1>
         {fault ? (
-          <div className="bg-gray-50 p-4 rounded-lg shadow-inner space-y-1">
+          <div className="bg-gray-700 p-4 rounded-lg shadow-inner space-y-1">
             <p>
               <strong>Fault Type:</strong> {formatLabel(fault.faultType)}
             </p>
@@ -52,7 +52,7 @@ export default async function Home() {
             </p>
           </div>
         ) : (
-          <p className="text-gray-700">No faults recorded.</p>
+          <p className="text-gray-300">No faults recorded.</p>
         )}
         {fault && (
           <Link
@@ -64,7 +64,7 @@ export default async function Home() {
         )}
         <Link
           href="/graph"
-          className="px-6 py-3 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors block sm:inline-block w-full sm:w-auto"
+          className="px-6 py-3 rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 transition-colors block sm:inline-block w-full sm:w-auto"
         >
           Go to Graph
         </Link>

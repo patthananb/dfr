@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export default function Navbar() {
   return (
-    <nav className="bg-gradient-to-r from-blue-700 to-indigo-700 text-white shadow">
+    <nav className="bg-gradient-to-r from-gray-900 to-gray-800 text-white shadow">
       <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between py-4">
         <Link href="/" className="text-2xl font-semibold mb-2 sm:mb-0">
           DFR

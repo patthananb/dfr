@@ -33,14 +33,14 @@ export default function FirmwarePage() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center flex-1 p-4">
-      <div className="w-full max-w-xl bg-white/80 backdrop-blur-sm rounded-xl shadow-lg p-6 text-center">
+    <div className="flex flex-col items-center justify-center flex-1 p-4 text-gray-100">
+      <div className="w-full max-w-xl bg-gray-800/80 backdrop-blur-sm rounded-xl shadow-lg p-6 text-center">
         <h1 className="text-2xl mb-4 font-semibold">Upload Firmware</h1>
         <div
           onDrop={handleDrop}
           onDragOver={handleDragOver}
           onClick={() => document.getElementById("fileInput").click()}
-          className="border-2 border-dashed border-gray-400 w-full h-48 flex items-center justify-center cursor-pointer rounded-lg bg-gray-50 hover:bg-gray-100 transition text-center"
+          className="border-2 border-dashed border-gray-500 w-full h-48 flex items-center justify-center cursor-pointer rounded-lg bg-gray-700 hover:bg-gray-600 transition text-center"
         >
           Drag and drop a firmware file here or click to select
         </div>

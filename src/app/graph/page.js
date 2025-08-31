@@ -132,8 +132,8 @@ const GraphPage = () => {
   };
 
   return (
-    <div className="flex flex-col flex-1 p-4 sm:p-8">
-      <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg p-6 w-full">
+    <div className="flex flex-col flex-1 p-4 sm:p-8 text-gray-100">
+      <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl shadow-lg p-6 w-full">
         <h1 className="text-2xl font-semibold mb-4 text-center">Sensor Data</h1>
         <div className="flex justify-center mb-4">
           <select
@@ -270,7 +270,7 @@ const GraphPage = () => {
           </div>
         </div>
       ) : (
-        <p>Loading data...</p>
+        <p className="text-gray-300">Loading data...</p>
       )}
       </div>
     </div>
