@@ -57,14 +57,14 @@ export default async function Home() {
         {fault && (
           <Link
             href={`/graph?file=${latestFile}`}
-            className="px-6 py-3 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors block sm:inline-block w-full sm:w-auto"
+            className="px-4 py-2 text-sm rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors block w-fit mx-auto"
           >
             View Latest Fault
           </Link>
         )}
         <Link
           href="/graph"
-          className="px-6 py-3 rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 transition-colors block sm:inline-block w-full sm:w-auto"
+          className="px-4 py-2 text-sm rounded-md bg-indigo-600 text-white hover:bg-indigo-500 transition-colors block w-fit mx-auto"
         >
           Go to Graph
         </Link>
