@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Line } from 'react-chartjs-2';
 import {
@@ -58,12 +58,42 @@ const GraphPage = () => {
     i3: true,
   });
   const [scale, setScale] = useState(DEFAULT_SCALE);
+  const [offset, setOffset] = useState(0);
   const [faultInfo, setFaultInfo] = useState({
     faultType: '',
     date: '',
     time: '',
     faultLocation: '',
   });
+
+  const maxOffset = Math.max(0, (voltageData?.labels.length || 0) - scale);
+
+  const adjustOffset = delta => {
+    setOffset(prev => {
+      const next = prev + delta;
+      if (next < 0) return 0;
+      if (next > maxOffset) return maxOffset;
+      return next;
+    });
+  };
+
+  const holdRef = useRef(null);
+
+  const startHoldAdjust = delta => {
+    adjustOffset(delta);
+    holdRef.current = setInterval(() => adjustOffset(delta), 150);
+  };
+
+  const stopHoldAdjust = () => {
+    if (holdRef.current) {
+      clearInterval(holdRef.current);
+      holdRef.current = null;
+    }
+  };
+
+  useEffect(() => {
+    return () => stopHoldAdjust();
+  }, []);
 
   useEffect(() => {
     const fetchFilenames = async () => {
@@ -120,12 +150,20 @@ const GraphPage = () => {
         setVoltageData({ labels, datasets: voltageDatasets });
         setCurrentData({ labels, datasets: currentDatasets });
         setScale(Math.min(labels.length, DEFAULT_SCALE));
+        setOffset(0);
       } catch (error) {
         console.error('Error fetching data:', error);
       }
     };
     fetchData();
   }, [selectedFile]);
+
+  useEffect(() => {
+    if (voltageData) {
+      const maxOffset = Math.max(0, voltageData.labels.length - scale);
+      setOffset(prev => Math.min(prev, maxOffset));
+    }
+  }, [scale, voltageData]);
 
   const toggleVisibility = key => {
     setVisible(prev => ({ ...prev, [key]: !prev[key] }));
@@ -161,6 +199,43 @@ const GraphPage = () => {
             />
           </label>
         </div>
+        <div className="w-full max-w-3xl mx-auto my-4">
+          <label className="flex flex-col items-center">
+            <span>Horizontal offset</span>
+            <div className="flex items-center w-full gap-2">
+              <button
+                type="button"
+                onMouseDown={() => startHoldAdjust(-1)}
+                onMouseUp={stopHoldAdjust}
+                onMouseLeave={stopHoldAdjust}
+                onTouchStart={() => startHoldAdjust(-1)}
+                onTouchEnd={stopHoldAdjust}
+                className="px-2 py-1 bg-gray-700 rounded text-white"
+              >
+                -
+              </button>
+              <input
+                type="range"
+                min={0}
+                max={maxOffset}
+                value={offset}
+                onChange={(e) => setOffset(Number(e.target.value))}
+                className="flex-grow"
+              />
+              <button
+                type="button"
+                onMouseDown={() => startHoldAdjust(1)}
+                onMouseUp={stopHoldAdjust}
+                onMouseLeave={stopHoldAdjust}
+                onTouchStart={() => startHoldAdjust(1)}
+                onTouchEnd={stopHoldAdjust}
+                className="px-2 py-1 bg-gray-700 rounded text-white"
+              >
+                +
+              </button>
+            </div>
+          </label>
+        </div>
         {voltageData && currentData ? (
           <div className="flex flex-col lg:flex-row w-full max-w-5xl mx-auto">
           <div className="flex flex-col items-center space-y-8 flex-grow">
@@ -168,12 +243,13 @@ const GraphPage = () => {
               <h2 className="text-center mb-2">Voltage</h2>
               <Line
                 data={{
-                  labels: voltageData.labels.slice(0, scale),
+                  labels: voltageData.labels.slice(offset, offset + scale),
                   datasets: voltageData.datasets
                     .filter(ds => visible[ds.key])
-                    .map(ds => ({ ...ds, tension: 0.1, data: ds.data.slice(0, scale) })),
+                    .map(ds => ({ ...ds, tension: 0.1, data: ds.data.slice(offset, offset + scale) })),
                 }}
                 options={{
+                  animation: false,
                   interaction: { mode: 'index', intersect: false },
                   plugins: { tooltip: { enabled: true } },
                   scales: {
@@ -210,12 +286,13 @@ const GraphPage = () => {
               <h2 className="text-center mb-2">Current</h2>
               <Line
                 data={{
-                  labels: currentData.labels.slice(0, scale),
+                  labels: currentData.labels.slice(offset, offset + scale),
                   datasets: currentData.datasets
                     .filter(ds => visible[ds.key])
-                    .map(ds => ({ ...ds, tension: 0.1, data: ds.data.slice(0, scale) })),
+                    .map(ds => ({ ...ds, tension: 0.1, data: ds.data.slice(offset, offset + scale) })),
                 }}
                 options={{
+                  animation: false,
                   interaction: { mode: 'index', intersect: false },
                   plugins: { tooltip: { enabled: true } },
                   scales: {
