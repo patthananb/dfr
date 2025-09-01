@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Line } from 'react-chartjs-2';
 import {
@@ -76,6 +76,24 @@ const GraphPage = () => {
       return next;
     });
   };
+
+  const holdRef = useRef(null);
+
+  const startHoldAdjust = delta => {
+    adjustOffset(delta);
+    holdRef.current = setInterval(() => adjustOffset(delta), 150);
+  };
+
+  const stopHoldAdjust = () => {
+    if (holdRef.current) {
+      clearInterval(holdRef.current);
+      holdRef.current = null;
+    }
+  };
+
+  useEffect(() => {
+    return () => stopHoldAdjust();
+  }, []);
 
   useEffect(() => {
     const fetchFilenames = async () => {
@@ -187,7 +205,11 @@ const GraphPage = () => {
             <div className="flex items-center w-full gap-2">
               <button
                 type="button"
-                onClick={() => adjustOffset(-1)}
+                onMouseDown={() => startHoldAdjust(-1)}
+                onMouseUp={stopHoldAdjust}
+                onMouseLeave={stopHoldAdjust}
+                onTouchStart={() => startHoldAdjust(-1)}
+                onTouchEnd={stopHoldAdjust}
                 className="px-2 py-1 bg-gray-700 rounded text-white"
               >
                 -
@@ -202,7 +224,11 @@ const GraphPage = () => {
               />
               <button
                 type="button"
-                onClick={() => adjustOffset(1)}
+                onMouseDown={() => startHoldAdjust(1)}
+                onMouseUp={stopHoldAdjust}
+                onMouseLeave={stopHoldAdjust}
+                onTouchStart={() => startHoldAdjust(1)}
+                onTouchEnd={stopHoldAdjust}
                 className="px-2 py-1 bg-gray-700 rounded text-white"
               >
                 +
