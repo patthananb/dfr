@@ -66,6 +66,17 @@ const GraphPage = () => {
     faultLocation: '',
   });
 
+  const maxOffset = Math.max(0, (voltageData?.labels.length || 0) - scale);
+
+  const adjustOffset = delta => {
+    setOffset(prev => {
+      const next = prev + delta;
+      if (next < 0) return 0;
+      if (next > maxOffset) return maxOffset;
+      return next;
+    });
+  };
+
   useEffect(() => {
     const fetchFilenames = async () => {
       try {
@@ -173,14 +184,30 @@ const GraphPage = () => {
         <div className="w-full max-w-3xl mx-auto my-4">
           <label className="flex flex-col items-center">
             <span>Horizontal offset</span>
-            <input
-              type="range"
-              min={0}
-              max={Math.max(0, (voltageData?.labels.length || 0) - scale)}
-              value={offset}
-              onChange={(e) => setOffset(Number(e.target.value))}
-              className="w-full"
-            />
+            <div className="flex items-center w-full gap-2">
+              <button
+                type="button"
+                onClick={() => adjustOffset(-1)}
+                className="px-2 py-1 bg-gray-700 rounded text-white"
+              >
+                -
+              </button>
+              <input
+                type="range"
+                min={0}
+                max={maxOffset}
+                value={offset}
+                onChange={(e) => setOffset(Number(e.target.value))}
+                className="flex-grow"
+              />
+              <button
+                type="button"
+                onClick={() => adjustOffset(1)}
+                className="px-2 py-1 bg-gray-700 rounded text-white"
+              >
+                +
+              </button>
+            </div>
           </label>
         </div>
         {voltageData && currentData ? (
@@ -196,6 +223,7 @@ const GraphPage = () => {
                     .map(ds => ({ ...ds, tension: 0.1, data: ds.data.slice(offset, offset + scale) })),
                 }}
                 options={{
+                  animation: false,
                   interaction: { mode: 'index', intersect: false },
                   plugins: { tooltip: { enabled: true } },
                   scales: {
@@ -238,6 +266,7 @@ const GraphPage = () => {
                     .map(ds => ({ ...ds, tension: 0.1, data: ds.data.slice(offset, offset + scale) })),
                 }}
                 options={{
+                  animation: false,
                   interaction: { mode: 'index', intersect: false },
                   plugins: { tooltip: { enabled: true } },
                   scales: {
