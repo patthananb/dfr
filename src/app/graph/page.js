@@ -132,34 +132,37 @@ const GraphPage = () => {
   };
 
   return (
-    <div className="container">
-      <h1 className="title text-xl sm:text-2xl">Sensor Data</h1>
-      <div className="dropdown-container flex justify-center">
-        <select
-          className="bg-black text-white p-2 rounded w-full max-w-xs"
-          onChange={(e) => setSelectedFile(e.target.value)}
-          value={selectedFile}
-        >
-          {filenames.map(file => (
-            <option key={file} value={file}>{file}</option>
-          ))}
-        </select>
-      </div>
-      <div className="w-full max-w-3xl mx-auto my-4">
-        <label className="flex flex-col items-center">
-          <span>Horizontal scale</span>
-          <input
-            type="range"
-            min={1}
-            max={voltageData?.labels.length || DEFAULT_SCALE}
-            value={scale}
-            onChange={(e) => setScale(Number(e.target.value))}
-            className="w-full"
-          />
-        </label>
-      </div>
-      {voltageData && currentData ? (
-        <div className="flex flex-col lg:flex-row w-full max-w-5xl mx-auto">
+    <div className="flex flex-col flex-1 p-4 sm:p-8 text-gray-100">
+      <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl shadow-lg p-6 w-full">
+        <h1 className="text-2xl font-semibold mb-4 text-center">Sensor Data</h1>
+        <div className="flex justify-center mb-4">
+          <select
+            className="bg-gray-800 text-white p-2 rounded w-full max-w-xs"
+            onChange={(e) => setSelectedFile(e.target.value)}
+            value={selectedFile}
+          >
+            {filenames.map(file => (
+              <option key={file} value={file}>
+                {file}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="w-full max-w-3xl mx-auto my-4">
+          <label className="flex flex-col items-center">
+            <span>Horizontal scale</span>
+            <input
+              type="range"
+              min={1}
+              max={voltageData?.labels.length || DEFAULT_SCALE}
+              value={scale}
+              onChange={(e) => setScale(Number(e.target.value))}
+              className="w-full"
+            />
+          </label>
+        </div>
+        {voltageData && currentData ? (
+          <div className="flex flex-col lg:flex-row w-full max-w-5xl mx-auto">
           <div className="flex flex-col items-center space-y-8 flex-grow">
             <div className="w-full max-w-3xl">
               <h2 className="text-center mb-2">Voltage</h2>
@@ -267,8 +270,9 @@ const GraphPage = () => {
           </div>
         </div>
       ) : (
-        <p>Loading data...</p>
+        <p className="text-gray-300">Loading data...</p>
       )}
+      </div>
     </div>
   );
 };
