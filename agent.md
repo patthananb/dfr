@@ -20,6 +20,11 @@ This project ingests JSON sensor data and visualizes it with Chart.js.
 3. The Graph page parses sample objects and renders them with `react-chartjs-2`.
 4. Firmware files are uploaded from `/firmware` and persisted by `/api/firmware`.
 
+## API Endpoints
+- `GET /api/data` – returns all filenames or, with `?file=name`, the contents of that file.
+- `POST /api/firmware` – accepts a form upload and writes the file to `firmware/`.
+- `GET /api/firmware/latest` – returns the most recently uploaded firmware binary.
+
 ## Development Notes
 - Uses Next.js 15, React 19, Tailwind CSS 4.
 - Run `npm run lint` before committing.

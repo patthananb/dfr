@@ -16,6 +16,11 @@ A Next.js 15 application that stores JSON sensor data and renders it as interact
 4. **Upload firmware** from `/firmware` via drag-and-drop or file picker; files are stored under `firmware/` by `/api/firmware`.
 5. **See the latest fault summary** on the landing page with a quick link to its graph.
 
+## API Endpoints
+- `GET /api/data` – returns `{ success: true, filenames: [...] }`. Pass `?file=NAME` to receive `{ success: true, files: [content] }` for that file.
+- `POST /api/firmware` – accepts a multipart form with a `file` field and saves the upload to `firmware/`.
+- `GET /api/firmware/latest` – downloads the most recently uploaded firmware binary.
+
 ## Data Flow
 1. Data files are placed in `data/`.
 2. The client fetches `/api/data` to list files, then `/api/data?file=...` to get contents.
@@ -32,4 +37,3 @@ npm run dev      # start development server
 npm run lint     # run ESLint checks
 ```
 No test suite is currently defined.
-
