@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { Suspense, useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Line } from 'react-chartjs-2';
 import {
@@ -42,7 +42,7 @@ const formatDate = dateStr => {
 
 const formatTime = timeStr => (timeStr ? timeStr.slice(0, 5) : '');
 
-const GraphPage = () => {
+const GraphContent = () => {
   const searchParams = useSearchParams();
   const fileParam = searchParams.get('file');
   const [voltageData, setVoltageData] = useState(null);
@@ -353,5 +353,11 @@ const GraphPage = () => {
     </div>
   );
 };
+
+const GraphPage = () => (
+  <Suspense fallback={<p className="text-gray-300">Loading...</p>}>
+    <GraphContent />
+  </Suspense>
+);
 
 export default GraphPage;
