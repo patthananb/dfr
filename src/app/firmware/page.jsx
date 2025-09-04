@@ -22,14 +22,24 @@ export default function FirmwarePage() {
   const handleDrop = (e) => {
     e.preventDefault();
     const file = e.dataTransfer.files[0];
-    if (file) uploadFile(file);
+    if (!file) return;
+    if (!file.name.endsWith(".bin")) {
+      setMessage("Only .bin files are allowed");
+      return;
+    }
+    uploadFile(file);
   };
 
   const handleDragOver = (e) => e.preventDefault();
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
-    if (file) uploadFile(file);
+    if (!file) return;
+    if (!file.name.endsWith(".bin")) {
+      setMessage("Only .bin files are allowed");
+      return;
+    }
+    uploadFile(file);
   };
 
   return (
@@ -44,9 +54,11 @@ export default function FirmwarePage() {
         >
           Drag and drop a firmware file here or click to select
         </div>
+        <p className="mt-2 text-sm text-yellow-400">Please upload only .bin files.</p>
         <input
           id="fileInput"
           type="file"
+          accept=".bin"
           className="hidden"
           onChange={handleFileChange}
         />
