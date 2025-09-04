@@ -35,18 +35,21 @@ V3_FREQ=$(random_freq)
 I1_FREQ=$(random_freq)
 I2_FREQ=$(random_freq)
 I3_FREQ=$(random_freq)
+A_FREQ=$(random_freq)
+B_FREQ=$(random_freq)
 
 # Build JSON payload of sine wave samples
 JSON_PAYLOAD="{\"faultType\":\"$FAULT_TYPE\",\"faultLocation\":\"$FAULT_LOCATION\",\"date\":\"$CURRENT_DATE\",\"time\":\"$CURRENT_TIME\",\"data\":["
 for ((n = 0; n < SAMPLES; n++)); do
   VALUES=$(awk -v amp=$AMPLITUDE -v offset=$OFFSET -v n=$n \
-    -v f1=$V1_FREQ -v f2=$V2_FREQ -v f3=$V3_FREQ -v f4=$I1_FREQ -v f5=$I2_FREQ -v f6=$I3_FREQ \
+    -v f1=$V1_FREQ -v f2=$V2_FREQ -v f3=$V3_FREQ -v f4=$I1_FREQ -v f5=$I2_FREQ -v f6=$I3_FREQ -v f7=$A_FREQ -v f8=$B_FREQ \
     'BEGIN{t=n/1000; pi=3.14159265359; \
-      printf "%d %d %d %d %d %d", \
+      printf "%d %d %d %d %d %d %d %d", \
       int(amp*sin(2*pi*f1*t)+offset), int(amp*sin(2*pi*f2*t)+offset), int(amp*sin(2*pi*f3*t)+offset), \
-      int(amp*sin(2*pi*f4*t)+offset), int(amp*sin(2*pi*f5*t)+offset), int(amp*sin(2*pi*f6*t)+offset)}')
-  read v1 v2 v3 i1 i2 i3 <<<"$VALUES"
-  JSON_PAYLOAD+="{\"n\":$n,\"v1\":$v1,\"v2\":$v2,\"v3\":$v3,\"i1\":$i1,\"i2\":$i2,\"i3\":$i3},"
+      int(amp*sin(2*pi*f4*t)+offset), int(amp*sin(2*pi*f5*t)+offset), int(amp*sin(2*pi*f6*t)+offset), \
+      int(amp*sin(2*pi*f7*t)+offset), int(amp*sin(2*pi*f8*t)+offset)}')
+  read v1 v2 v3 i1 i2 i3 A B <<<"$VALUES"
+  JSON_PAYLOAD+="{\"n\":$n,\"v1\":$v1,\"v2\":$v2,\"v3\":$v3,\"i1\":$i1,\"i2\":$i2,\"i3\":$i3,\"A\":$A,\"B\":$B},"
 done
 JSON_PAYLOAD="${JSON_PAYLOAD%,}]}"
 
@@ -58,7 +61,7 @@ echo "---------------------------------"
 echo "Generating sine wave data:"
 echo "Fault Type: ${FAULT_TYPE}"
 echo "Fault Location: ${FAULT_LOCATION}"
-echo "Frequencies (Hz): v1=$V1_FREQ v2=$V2_FREQ v3=$V3_FREQ i1=$I1_FREQ i2=$I2_FREQ i3=$I3_FREQ"
+echo "Frequencies (Hz): v1=$V1_FREQ v2=$V2_FREQ v3=$V3_FREQ i1=$I1_FREQ i2=$I2_FREQ i3=$I3_FREQ A=$A_FREQ B=$B_FREQ"
 echo "Filename: $FILENAME"
 echo "---------------------------------"
 

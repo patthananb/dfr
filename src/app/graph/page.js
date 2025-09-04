@@ -47,6 +47,7 @@ const GraphContent = () => {
   const fileParam = searchParams.get('file');
   const [voltageData, setVoltageData] = useState(null);
   const [currentData, setCurrentData] = useState(null);
+  const [abData, setAbData] = useState(null);
   const [filenames, setFilenames] = useState([]);
   const [selectedFile, setSelectedFile] = useState('');
   const [visible, setVisible] = useState({
@@ -56,6 +57,8 @@ const GraphContent = () => {
     i1: true,
     i2: true,
     i3: true,
+    A: true,
+    B: true,
   });
   const [scale, setScale] = useState(DEFAULT_SCALE);
   const [offset, setOffset] = useState(0);
@@ -141,14 +144,19 @@ const GraphContent = () => {
           { key: 'v2', label: 'V2', data: samples.map(p => p.v2), borderColor: 'green' },
           { key: 'v3', label: 'V3', data: samples.map(p => p.v3), borderColor: 'blue' },
         ].map(ds => ({ ...ds, min: Math.min(...ds.data), max: Math.max(...ds.data) }));
-        const currentDatasets = [
-          { key: 'i1', label: 'I1', data: samples.map(p => p.i1), borderColor: 'orange' },
-          { key: 'i2', label: 'I2', data: samples.map(p => p.i2), borderColor: 'purple' },
-          { key: 'i3', label: 'I3', data: samples.map(p => p.i3), borderColor: 'teal' },
-        ].map(ds => ({ ...ds, min: Math.min(...ds.data), max: Math.max(...ds.data) }));
+          const currentDatasets = [
+            { key: 'i1', label: 'I1', data: samples.map(p => p.i1), borderColor: 'orange' },
+            { key: 'i2', label: 'I2', data: samples.map(p => p.i2), borderColor: 'purple' },
+            { key: 'i3', label: 'I3', data: samples.map(p => p.i3), borderColor: 'teal' },
+          ].map(ds => ({ ...ds, min: Math.min(...ds.data), max: Math.max(...ds.data) }));
+          const abDatasets = [
+            { key: 'A', label: 'A', data: samples.map(p => p.A), borderColor: 'yellow' },
+            { key: 'B', label: 'B', data: samples.map(p => p.B), borderColor: 'pink' },
+          ].map(ds => ({ ...ds, min: Math.min(...ds.data), max: Math.max(...ds.data) }));
 
-        setVoltageData({ labels, datasets: voltageDatasets });
-        setCurrentData({ labels, datasets: currentDatasets });
+          setVoltageData({ labels, datasets: voltageDatasets });
+          setCurrentData({ labels, datasets: currentDatasets });
+          setAbData({ labels, datasets: abDatasets });
         setScale(Math.min(labels.length, DEFAULT_SCALE));
         setOffset(0);
       } catch (error) {
@@ -236,7 +244,7 @@ const GraphContent = () => {
             </div>
           </label>
         </div>
-        {voltageData && currentData ? (
+        {voltageData && currentData && abData ? (
           <div className="flex flex-col lg:flex-row w-full max-w-5xl mx-auto">
           <div className="flex flex-col items-center space-y-8 flex-grow">
             <div className="w-full max-w-3xl">
@@ -282,50 +290,93 @@ const GraphContent = () => {
                 ))}
               </div>
             </div>
-            <div className="w-full max-w-3xl">
-              <h2 className="text-center mb-2">Current</h2>
-              <Line
-                data={{
-                  labels: currentData.labels.slice(offset, offset + scale),
-                  datasets: currentData.datasets
-                    .filter(ds => visible[ds.key])
-                    .map(ds => ({ ...ds, tension: 0.1, data: ds.data.slice(offset, offset + scale) })),
-                }}
-                options={{
-                  animation: false,
-                  interaction: { mode: 'index', intersect: false },
-                  plugins: { tooltip: { enabled: true } },
-                  scales: {
-                    y: {
-                      title: {
-                        display: true,
-                        text: 'Current [A]'
+              <div className="w-full max-w-3xl">
+                <h2 className="text-center mb-2">Current</h2>
+                <Line
+                  data={{
+                    labels: currentData.labels.slice(offset, offset + scale),
+                    datasets: currentData.datasets
+                      .filter(ds => visible[ds.key])
+                      .map(ds => ({ ...ds, tension: 0.1, data: ds.data.slice(offset, offset + scale) })),
+                  }}
+                  options={{
+                    animation: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: { tooltip: { enabled: true } },
+                    scales: {
+                      y: {
+                        title: {
+                          display: true,
+                          text: 'Current [A]'
+                        }
                       }
                     }
-                  }
-                }}
-              />
-              <div className="flex justify-center gap-4 mt-2">
-                {['i1', 'i2', 'i3'].map(key => (
-                  <label key={key} className="flex items-center gap-1">
-                    <input
-                      type="checkbox"
-                      checked={visible[key]}
-                      onChange={() => toggleVisibility(key)}
-                    />
-                    {key.toUpperCase()}
-                  </label>
-                ))}
+                  }}
+                />
+                <div className="flex justify-center gap-4 mt-2">
+                  {['i1', 'i2', 'i3'].map(key => (
+                    <label key={key} className="flex items-center gap-1">
+                      <input
+                        type="checkbox"
+                        checked={visible[key]}
+                        onChange={() => toggleVisibility(key)}
+                      />
+                      {key.toUpperCase()}
+                    </label>
+                  ))}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs mt-2 text-center">
+                  {currentData.datasets.map(ds => (
+                    <div key={ds.key}>
+                      {ds.label} Min: {ds.min.toFixed(2)} Max: {ds.max.toFixed(2)}
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs mt-2 text-center">
-                {currentData.datasets.map(ds => (
-                  <div key={ds.key}>
-                    {ds.label} Min: {ds.min.toFixed(2)} Max: {ds.max.toFixed(2)}
-                  </div>
-                ))}
+              <div className="w-full max-w-3xl">
+                <h2 className="text-center mb-2">A & B</h2>
+                <Line
+                  data={{
+                    labels: abData.labels.slice(offset, offset + scale),
+                    datasets: abData.datasets
+                      .filter(ds => visible[ds.key])
+                      .map(ds => ({ ...ds, tension: 0.1, data: ds.data.slice(offset, offset + scale) })),
+                  }}
+                  options={{
+                    animation: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: { tooltip: { enabled: true } },
+                    scales: {
+                      y: {
+                        title: {
+                          display: true,
+                          text: 'A/B'
+                        }
+                      }
+                    }
+                  }}
+                />
+                <div className="flex justify-center gap-4 mt-2">
+                  {['A', 'B'].map(key => (
+                    <label key={key} className="flex items-center gap-1">
+                      <input
+                        type="checkbox"
+                        checked={visible[key]}
+                        onChange={() => toggleVisibility(key)}
+                      />
+                      {key.toUpperCase()}
+                    </label>
+                  ))}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs mt-2 text-center">
+                  {abData.datasets.map(ds => (
+                    <div key={ds.key}>
+                      {ds.label} Min: {ds.min.toFixed(2)} Max: {ds.max.toFixed(2)}
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
           <div className="w-full lg:w-64 lg:ml-4 mt-8 lg:mt-0">
             <h2 className="mb-2 font-semibold">Fault Info</h2>
             <p>
