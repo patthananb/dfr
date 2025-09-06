@@ -23,6 +23,11 @@ export default function Navbar() {
               Firmware
             </Link>
           </li>
+          <li>
+            <Link href="/about" className="hover:text-gray-200 transition-colors">
+              About
+            </Link>
+          </li>
         </ul>
       </div>
     </nav>

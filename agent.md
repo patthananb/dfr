@@ -7,10 +7,11 @@ This project ingests JSON sensor data and visualizes it with Chart.js.
   - `page.js` – landing page displaying the latest fault summary.
   - `graph/page.js` – client page that lists JSON files and draws charts.
   - `firmware/page.jsx` – drag-and-drop interface for uploading firmware files.
+  - `about/page.jsx` – static page describing the project.
   - `api/data/route.js` – lists filenames or returns file contents based on the `file` query string.
   - `api/firmware/route.js` – saves uploaded firmware to the top-level `firmware/` directory.
   - `data/` – runtime storage for JSON files.
-- `src/components/Navbar.jsx` – links to Home, Graph, and Firmware pages.
+  - `src/components/Navbar.jsx` – links to Home, Graph, Firmware, and About pages.
 - `send-dummy-data.sh` – helper script to generate synthetic JSON for testing.
 - `firmware/` – storage for uploaded firmware binaries.
 
