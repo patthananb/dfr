@@ -28,7 +28,18 @@ A Next.js 15 application that stores JSON sensor data and renders it as interact
 
 ## Firmware Upload
 1. Visit `/firmware` to drag and drop or select a file.
-2. The file is sent to `/api/firmware` and saved to `firmware/`.
+2. Upload **only** firmware header files with the `.h` extension. Files with other extensions are rejected so that the MCU can consume the header payload directly.
+3. The file is sent to `/api/firmware` and saved to `firmware/`.
+
+### Creating the `.h` firmware file with Arduino IDE
+1. Open your sketch in Arduino IDE and select **Sketch → Export Compiled Binary**. The IDE will build the sketch and place the compiled output in your sketch directory.
+2. Choose **Sketch → Show Sketch Folder** to open the location of the exported files. Inside the `build/<board>/` folder you will see the generated binary (for example, `firmware.ino.bin`).
+3. Convert that binary into a C header by running the following command in a terminal from the same folder:
+   ```bash
+   xxd -i firmware.ino.bin > firmware.h
+   ```
+   The command uses the standard `xxd` tool (bundled with common shells such as Git Bash and macOS/Linux terminals) to wrap the binary bytes in a `const unsigned char[]` definition that the firmware loader expects.
+4. Upload the resulting `firmware.h` file through the `/firmware` page.
 
 ## Development
 ```bash
