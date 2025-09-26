@@ -38,12 +38,17 @@ export async function GET() {
       }
     }
 
-    const buffer = await readFile(join(firmwareDir, latest));
-    return new NextResponse(buffer, {
+    const fileBuffer = await readFile(join(firmwareDir, latest));
+    const fileSize = fileBuffer.length;
+
+    return new NextResponse(fileBuffer, {
       status: 200,
       headers: {
         "Content-Type": "application/octet-stream",
         "Content-Disposition": `attachment; filename="${latest}"`,
+        "Content-Length": fileSize.toString(),
+        "Content-Encoding": "identity",
+        "Cache-Control": "no-store, no-transform",
       },
     });
   } catch (err) {
