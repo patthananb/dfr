@@ -1,55 +1,63 @@
 import { NextResponse } from "next/server";
-import { readdir, stat, readFile } from "fs/promises";
 import { join } from "path";
+import { readdir, readFile, stat } from "fs/promises";
 
 export async function GET() {
   try {
     const firmwareDir = join(process.cwd(), "firmware");
+    const entries = await readdir(firmwareDir, { withFileTypes: true });
+    const files = entries.filter((entry) => entry.isFile());
 
-    let entries;
-    try {
-      entries = await readdir(firmwareDir, { withFileTypes: true });
-    } catch (err) {
-      if (err.code === "ENOENT") {
-        return NextResponse.json(
-          { error: "No firmware found" },
-          { status: 404 }
-        );
-      }
-      throw err;
-    }
-
-    const files = entries.filter((e) => e.isFile());
     if (files.length === 0) {
       return NextResponse.json(
-        { error: "No firmware found" },
+        { success: false, error: "No firmware files found" },
         { status: 404 }
       );
     }
 
-    let latest = null;
-    let latestMtime = 0;
+    let latestFile = null;
+    let latestTimestamp = -Infinity;
+
     for (const file of files) {
       const filePath = join(firmwareDir, file.name);
-      const { mtimeMs } = await stat(filePath);
-      if (mtimeMs > latestMtime) {
-        latestMtime = mtimeMs;
-        latest = file.name;
+      const fileStats = await stat(filePath);
+
+      if (fileStats.mtimeMs > latestTimestamp) {
+        latestTimestamp = fileStats.mtimeMs;
+        latestFile = {
+          name: file.name,
+          path: filePath,
+        };
       }
     }
 
-    const buffer = await readFile(join(firmwareDir, latest));
-    return new NextResponse(buffer, {
+    if (!latestFile) {
+      return NextResponse.json(
+        { success: false, error: "No firmware files found" },
+        { status: 404 }
+      );
+    }
+
+    const fileBuffer = await readFile(latestFile.path);
+
+    return new NextResponse(fileBuffer, {
       status: 200,
       headers: {
         "Content-Type": "application/octet-stream",
-        "Content-Disposition": `attachment; filename="${latest}"`,
+        "Content-Disposition": `attachment; filename="${latestFile.name}"`,
       },
     });
-  } catch (err) {
-    console.error(err);
+  } catch (error) {
+    if (error?.code === "ENOENT") {
+      return NextResponse.json(
+        { success: false, error: "Firmware directory not found" },
+        { status: 404 }
+      );
+    }
+
+    console.error("Failed to retrieve latest firmware:", error);
     return NextResponse.json(
-      { error: "Internal Server Error" },
+      { success: false, error: "Failed to retrieve latest firmware" },
       { status: 500 }
     );
   }
