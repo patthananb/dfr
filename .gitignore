@@ -43,3 +43,7 @@ next-env.d.ts
 # firmware uploads
 /firmware/*
 !/firmware/.gitkeep
+
+# firmware status logs
+/firmware-status/*
+!/firmware-status/.gitkeep
