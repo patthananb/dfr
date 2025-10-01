@@ -9,10 +9,12 @@ This project ingests JSON sensor data and visualizes it with Chart.js.
   - `firmware/page.jsx` – drag-and-drop interface for uploading firmware files.
   - `api/data/route.js` – lists filenames or returns file contents based on the `file` query string.
   - `api/firmware/route.js` – saves uploaded firmware to the top-level `firmware/` directory.
+  - `api/firmware/status/route.js` – logs OTA update status from ESP32 devices.
   - `data/` – runtime storage for JSON files.
 - `src/components/Navbar.jsx` – links to Home, Graph, and Firmware pages.
 - `send-dummy-data.sh` – helper script to generate synthetic JSON for testing.
 - `firmware/` – storage for uploaded firmware binaries.
+- `firmware-status/` – storage for OTA update status logs.
 
 ## How It Works
 1. JSON files are generated (e.g., via the dummy-data script) under `data/`.
@@ -24,6 +26,7 @@ This project ingests JSON sensor data and visualizes it with Chart.js.
 - `GET /api/data` – returns all filenames or, with `?file=name`, the contents of that file.
 - `POST /api/firmware` – accepts a form upload and writes the file to `firmware/`.
 - `GET /api/firmware/latest` – returns the most recently uploaded firmware binary.
+- `POST /api/firmware/status` – accepts JSON with `datetime`, `version`, and `feeder_number` to log OTA update status.
 
 ## Development Notes
 - Uses Next.js 15, React 19, Tailwind CSS 4.

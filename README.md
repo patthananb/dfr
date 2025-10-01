@@ -20,6 +20,7 @@ A Next.js 15 application that stores JSON sensor data and renders it as interact
 - `GET /api/data` – returns `{ success: true, filenames: [...] }`. Pass `?file=NAME` to receive `{ success: true, files: [content] }` for that file.
 - `POST /api/firmware` – accepts a multipart form with a `file` field and saves the upload to `firmware/`.
 - `GET /api/firmware/latest` – downloads the most recently uploaded firmware binary.
+- `POST /api/firmware/status` – logs OTA update status from ESP32 devices. Accepts JSON with `datetime`, `version`, and `feeder_number` fields. Logs are stored in `firmware-status/`.
 
 ## Data Flow
 1. Data files are placed in `data/`.
