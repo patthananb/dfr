@@ -72,11 +72,11 @@ export default function FirmwareGuidePage() {
               <li>
                 Run:{" "}
                 <code className="bg-gray-700 px-2 py-1 rounded block mt-2">
-                  arduino-cli compile --fqbn &lt;board_fqbn&gt; --output-dir ./output &lt;sketch_path&gt;
+                  arduino-cli compile --fqbn {"<board_fqbn>"} --output-dir ./output {"<sketch_path>"}
                 </code>
               </li>
               <li>
-                Replace <code className="bg-gray-700 px-2 py-1 rounded">&lt;board_fqbn&gt;</code> with your board's fully qualified name (e.g., <code className="bg-gray-700 px-2 py-1 rounded">esp32:esp32:esp32</code>)
+                Replace <code className="bg-gray-700 px-2 py-1 rounded">{"<board_fqbn>"}</code> with your board's fully qualified name (e.g., <code className="bg-gray-700 px-2 py-1 rounded">esp32:esp32:esp32</code>)
               </li>
               <li>The .bin file will be in the output directory</li>
             </ol>
