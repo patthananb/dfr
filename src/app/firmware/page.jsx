@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 
 export default function FirmwarePage() {
   const [message, setMessage] = useState("");
@@ -55,6 +56,12 @@ export default function FirmwarePage() {
           Drag and drop a firmware file here or click to select
         </div>
         <p className="mt-2 text-sm text-yellow-400">Please upload only .bin files.</p>
+        <Link
+          href="/firmware/guide"
+          className="mt-3 inline-block text-sm text-blue-400 hover:text-blue-300 underline transition-colors"
+        >
+          How to get .bin file from Arduino sketch?
+        </Link>
         <input
           id="fileInput"
           type="file"
