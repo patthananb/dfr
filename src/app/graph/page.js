@@ -183,7 +183,7 @@ const GraphContent = () => {
         <h1 className="text-3xl sm:text-4xl font-bold mb-6 text-center bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">Sensor Data</h1>
         <div className="flex justify-center mb-6">
           <select
-            className="bg-slate-800 text-white p-3 rounded-xl w-full max-w-md border border-slate-700 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/50 outline-none transition-all duration-200 cursor-pointer hover:bg-slate-750"
+            className="bg-slate-800 text-white p-3 rounded-xl w-full max-w-md border border-slate-700 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/50 outline-none transition-all duration-200 cursor-pointer hover:bg-slate-700"
             onChange={(e) => setSelectedFile(e.target.value)}
             value={selectedFile}
           >
