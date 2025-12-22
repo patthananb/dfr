@@ -25,7 +25,12 @@ export default async function Home() {
 
   try {
     let files = await readdir(dataDir);
-    files = files.filter((name) => name !== ".gitkeep").sort();
+    files = files.filter((name) => name !== ".gitkeep").sort((a, b) => {
+      // Extract timestamp from filename format: fault_xxx_YYYYMMDD_HHMMSS.json
+      const timestampA = a.match(/_(\d{8}_\d{6})\.json$/)?.[1] || "";
+      const timestampB = b.match(/_(\d{8}_\d{6})\.json$/)?.[1] || "";
+      return timestampA.localeCompare(timestampB);
+    });
     if (files.length > 0) {
       latestFile = files[files.length - 1];
       const content = await readFile(join(dataDir, latestFile), "utf-8");
