@@ -179,11 +179,11 @@ const GraphContent = () => {
 
   return (
     <div className="flex flex-col flex-1 p-4 sm:p-8 text-gray-100">
-      <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl shadow-lg p-6 w-full">
-        <h1 className="text-2xl font-semibold mb-4 text-center">Sensor Data</h1>
-        <div className="flex justify-center mb-4">
+      <div className="bg-gradient-to-br from-slate-800/90 via-slate-900/90 to-slate-800/90 backdrop-blur-md rounded-2xl shadow-2xl border border-slate-700/50 p-6 sm:p-8 w-full">
+        <h1 className="text-3xl sm:text-4xl font-bold mb-6 text-center bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">Sensor Data</h1>
+        <div className="flex justify-center mb-6">
           <select
-            className="bg-gray-800 text-white p-2 rounded w-full max-w-xs"
+            className="bg-slate-800 text-white p-3 rounded-xl w-full max-w-md border border-slate-700 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/50 outline-none transition-all duration-200 cursor-pointer hover:bg-slate-750"
             onChange={(e) => setSelectedFile(e.target.value)}
             value={selectedFile}
           >
@@ -194,23 +194,23 @@ const GraphContent = () => {
             ))}
           </select>
         </div>
-        <div className="w-full max-w-3xl mx-auto my-4">
+        <div className="w-full max-w-3xl mx-auto my-6 bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
           <label className="flex flex-col items-center">
-            <span>Horizontal scale</span>
+            <span className="text-lg font-medium mb-3 text-gray-300">Horizontal Scale</span>
             <input
               type="range"
               min={1}
               max={voltageData?.labels.length || DEFAULT_SCALE}
               value={scale}
               onChange={(e) => setScale(Number(e.target.value))}
-              className="w-full"
+              className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer slider-thumb"
             />
           </label>
         </div>
-        <div className="w-full max-w-3xl mx-auto my-4">
+        <div className="w-full max-w-3xl mx-auto my-6 bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
           <label className="flex flex-col items-center">
-            <span>Horizontal offset</span>
-            <div className="flex items-center w-full gap-2">
+            <span className="text-lg font-medium mb-3 text-gray-300">Horizontal Offset</span>
+            <div className="flex items-center w-full gap-3">
               <button
                 type="button"
                 onMouseDown={() => startHoldAdjust(-1)}
@@ -218,9 +218,9 @@ const GraphContent = () => {
                 onMouseLeave={stopHoldAdjust}
                 onTouchStart={() => startHoldAdjust(-1)}
                 onTouchEnd={stopHoldAdjust}
-                className="px-2 py-1 bg-gray-700 rounded text-white"
+                className="px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 rounded-lg text-white font-bold transition-all duration-200 shadow-lg hover:shadow-blue-500/50 transform hover:scale-105"
               >
-                -
+                −
               </button>
               <input
                 type="range"
@@ -228,7 +228,7 @@ const GraphContent = () => {
                 max={maxOffset}
                 value={offset}
                 onChange={(e) => setOffset(Number(e.target.value))}
-                className="flex-grow"
+                className="flex-grow h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer slider-thumb"
               />
               <button
                 type="button"
@@ -237,7 +237,7 @@ const GraphContent = () => {
                 onMouseLeave={stopHoldAdjust}
                 onTouchStart={() => startHoldAdjust(1)}
                 onTouchEnd={stopHoldAdjust}
-                className="px-2 py-1 bg-gray-700 rounded text-white"
+                className="px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 rounded-lg text-white font-bold transition-all duration-200 shadow-lg hover:shadow-blue-500/50 transform hover:scale-105"
               >
                 +
               </button>
@@ -245,10 +245,10 @@ const GraphContent = () => {
           </label>
         </div>
         {voltageData && currentData && abData ? (
-          <div className="flex flex-col lg:flex-row w-full max-w-5xl mx-auto">
+          <div className="flex flex-col lg:flex-row w-full max-w-5xl mx-auto gap-6">
           <div className="flex flex-col items-center space-y-8 flex-grow">
-            <div className="w-full max-w-3xl">
-              <h2 className="text-center mb-2">Voltage</h2>
+            <div className="w-full max-w-3xl bg-slate-800/50 rounded-xl p-6 border border-slate-700/50">
+              <h2 className="text-center mb-4 text-2xl font-bold text-blue-400">Voltage</h2>
               <Line
                 data={{
                   labels: voltageData.labels.slice(offset, offset + scale),
@@ -270,28 +270,29 @@ const GraphContent = () => {
                   }
                 }}
               />
-              <div className="flex justify-center gap-4 mt-2">
+              <div className="flex justify-center gap-6 mt-4">
                 {['v1', 'v2', 'v3'].map(key => (
-                  <label key={key} className="flex items-center gap-1">
+                  <label key={key} className="flex items-center gap-2 cursor-pointer hover:scale-105 transition-transform">
                     <input
                       type="checkbox"
                       checked={visible[key]}
                       onChange={() => toggleVisibility(key)}
+                      className="w-4 h-4 cursor-pointer accent-cyan-500"
                     />
-                    {key.toUpperCase()}
+                    <span className="font-medium">{key.toUpperCase()}</span>
                   </label>
                 ))}
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs mt-2 text-center">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs mt-4 text-center">
                 {voltageData.datasets.map(ds => (
-                  <div key={ds.key}>
-                    {ds.label} Min: {ds.min.toFixed(2)} Max: {ds.max.toFixed(2)}
+                  <div key={ds.key} className="bg-slate-900/50 p-2 rounded-lg border border-slate-700/50">
+                    <span className="font-semibold text-blue-400">{ds.label}</span> Min: <span className="text-cyan-400">{ds.min.toFixed(2)}</span> Max: <span className="text-cyan-400">{ds.max.toFixed(2)}</span>
                   </div>
                 ))}
               </div>
             </div>
-              <div className="w-full max-w-3xl">
-                <h2 className="text-center mb-2">Current</h2>
+              <div className="w-full max-w-3xl bg-slate-800/50 rounded-xl p-6 border border-slate-700/50">
+                <h2 className="text-center mb-4 text-2xl font-bold text-purple-400">Current</h2>
                 <Line
                   data={{
                     labels: currentData.labels.slice(offset, offset + scale),
@@ -313,28 +314,29 @@ const GraphContent = () => {
                     }
                   }}
                 />
-                <div className="flex justify-center gap-4 mt-2">
+                <div className="flex justify-center gap-6 mt-4">
                   {['i1', 'i2', 'i3'].map(key => (
-                    <label key={key} className="flex items-center gap-1">
+                    <label key={key} className="flex items-center gap-2 cursor-pointer hover:scale-105 transition-transform">
                       <input
                         type="checkbox"
                         checked={visible[key]}
                         onChange={() => toggleVisibility(key)}
+                        className="w-4 h-4 cursor-pointer accent-cyan-500"
                       />
-                      {key.toUpperCase()}
+                      <span className="font-medium">{key.toUpperCase()}</span>
                     </label>
                   ))}
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs mt-2 text-center">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs mt-4 text-center">
                   {currentData.datasets.map(ds => (
-                    <div key={ds.key}>
-                      {ds.label} Min: {ds.min.toFixed(2)} Max: {ds.max.toFixed(2)}
+                    <div key={ds.key} className="bg-slate-900/50 p-2 rounded-lg border border-slate-700/50">
+                      <span className="font-semibold text-purple-400">{ds.label}</span> Min: <span className="text-cyan-400">{ds.min.toFixed(2)}</span> Max: <span className="text-cyan-400">{ds.max.toFixed(2)}</span>
                     </div>
                   ))}
                 </div>
               </div>
-              <div className="w-full max-w-3xl">
-                <h2 className="text-center mb-2">A & B</h2>
+              <div className="w-full max-w-3xl bg-slate-800/50 rounded-xl p-6 border border-slate-700/50">
+                <h2 className="text-center mb-4 text-2xl font-bold text-teal-400">A & B</h2>
                 <Line
                   data={{
                     labels: abData.labels.slice(offset, offset + scale),
@@ -356,49 +358,54 @@ const GraphContent = () => {
                     }
                   }}
                 />
-                <div className="flex justify-center gap-4 mt-2">
+                <div className="flex justify-center gap-6 mt-4">
                   {['A', 'B'].map(key => (
-                    <label key={key} className="flex items-center gap-1">
+                    <label key={key} className="flex items-center gap-2 cursor-pointer hover:scale-105 transition-transform">
                       <input
                         type="checkbox"
                         checked={visible[key]}
                         onChange={() => toggleVisibility(key)}
+                        className="w-4 h-4 cursor-pointer accent-cyan-500"
                       />
-                      {key.toUpperCase()}
+                      <span className="font-medium">{key.toUpperCase()}</span>
                     </label>
                   ))}
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs mt-2 text-center">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs mt-4 text-center">
                   {abData.datasets.map(ds => (
-                    <div key={ds.key}>
-                      {ds.label} Min: {ds.min.toFixed(2)} Max: {ds.max.toFixed(2)}
+                    <div key={ds.key} className="bg-slate-900/50 p-2 rounded-lg border border-slate-700/50">
+                      <span className="font-semibold text-teal-400">{ds.label}</span> Min: <span className="text-cyan-400">{ds.min.toFixed(2)}</span> Max: <span className="text-cyan-400">{ds.max.toFixed(2)}</span>
                     </div>
                   ))}
                 </div>
               </div>
             </div>
-          <div className="w-full lg:w-64 lg:ml-4 mt-8 lg:mt-0">
-            <h2 className="mb-2 font-semibold">Fault Info</h2>
-            <p>
-              <span className="font-medium">Fault Type:</span>{' '}
-              {formatLabel(faultInfo.faultType)}
-            </p>
-            <p>
-              <span className="font-medium">Date:</span>{' '}
-              {formatDate(faultInfo.date)}
-            </p>
-            <p>
-              <span className="font-medium">Time:</span>{' '}
-              {formatTime(faultInfo.time)}
-            </p>
-            <p>
-              <span className="font-medium">Location:</span>{' '}
-              {formatLabel(faultInfo.faultLocation)}
-            </p>
+          <div className="w-full lg:w-72 lg:ml-6 mt-8 lg:mt-0">
+            <div className="bg-slate-800/50 rounded-xl p-6 border border-slate-700/50 sticky top-8">
+              <h2 className="mb-4 text-2xl font-bold text-center bg-gradient-to-r from-yellow-400 to-orange-400 bg-clip-text text-transparent">Fault Info</h2>
+              <div className="space-y-3">
+                <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-700/50">
+                  <span className="block text-sm text-gray-400 mb-1">Fault Type</span>
+                  <span className="block font-semibold text-white">{formatLabel(faultInfo.faultType)}</span>
+                </div>
+                <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-700/50">
+                  <span className="block text-sm text-gray-400 mb-1">Date</span>
+                  <span className="block font-semibold text-white">{formatDate(faultInfo.date)}</span>
+                </div>
+                <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-700/50">
+                  <span className="block text-sm text-gray-400 mb-1">Time</span>
+                  <span className="block font-semibold text-white">{formatTime(faultInfo.time)}</span>
+                </div>
+                <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-700/50">
+                  <span className="block text-sm text-gray-400 mb-1">Location</span>
+                  <span className="block font-semibold text-white">{formatLabel(faultInfo.faultLocation)}</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       ) : (
-        <p className="text-gray-300">Loading data...</p>
+        <p className="text-gray-300 text-center text-lg">Loading data...</p>
       )}
       </div>
     </div>
