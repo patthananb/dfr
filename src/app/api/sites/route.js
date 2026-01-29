@@ -67,3 +67,63 @@ export async function POST(request) {
     );
   }
 }
+
+export async function PUT(request) {
+  try {
+    const body = await request.json();
+    const siteId = typeof body.id === "string" ? body.id.trim() : "";
+    const name = typeof body.name === "string" ? body.name.trim() : "";
+    const wifiSsid =
+      typeof body.wifi?.ssid === "string" ? body.wifi.ssid.trim() : "";
+    const wifiPassword =
+      typeof body.wifi?.password === "string" ? body.wifi.password : "";
+
+    const devices = Array.isArray(body.devices)
+      ? body.devices
+          .map((device) => ({
+            id: typeof device.id === "string" ? device.id.trim() : "",
+            mac: typeof device.mac === "string" ? device.mac.trim() : "",
+          }))
+          .filter((device) => device.id && device.mac)
+      : [];
+
+    if (!siteId || !name || !wifiSsid || devices.length === 0) {
+      return NextResponse.json(
+        {
+          error:
+            "Site ID, name, WiFi SSID, and at least one ESP32 ID and MAC address are required",
+        },
+        { status: 400 }
+      );
+    }
+
+    const sites = await readSites();
+    const siteIndex = sites.findIndex((site) => site.id === siteId);
+    if (siteIndex === -1) {
+      return NextResponse.json({ error: "Site not found" }, { status: 404 });
+    }
+
+    const existing = sites[siteIndex];
+    const updatedSite = {
+      ...existing,
+      name,
+      wifi: {
+        ssid: wifiSsid,
+        password: wifiPassword.length > 0 ? wifiPassword : existing.wifi?.password,
+      },
+      devices,
+    };
+
+    const updatedSites = [...sites];
+    updatedSites[siteIndex] = updatedSite;
+    await writeSites(updatedSites);
+
+    return NextResponse.json({ sites: sanitizeSites(updatedSites) });
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json(
+      { error: "Failed to update site" },
+      { status: 500 }
+    );
+  }
+}
