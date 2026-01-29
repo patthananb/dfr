@@ -7,8 +7,6 @@ export default function FirmwarePage() {
   const [message, setMessage] = useState("");
   const [espIds, setEspIds] = useState([]);
   const [selectedEspId, setSelectedEspId] = useState("");
-  const [newEspId, setNewEspId] = useState("");
-  const [setupMessage, setSetupMessage] = useState("");
 
   const sortedEspIds = useMemo(
     () => [...espIds].sort((a, b) => a.localeCompare(b)),
@@ -17,19 +15,28 @@ export default function FirmwarePage() {
 
   const loadEspIds = async () => {
     try {
-      const res = await fetch("/api/esp32");
+      const res = await fetch("/api/sites");
       if (!res.ok) {
-        throw new Error("Failed to load ESP32 IDs");
+        throw new Error("Failed to load sites");
       }
       const data = await res.json();
-      const ids = Array.isArray(data.ids) ? data.ids : [];
+      const sites = Array.isArray(data.sites) ? data.sites : [];
+      const uniqueIds = new Set();
+      sites.forEach((site) => {
+        site.devices?.forEach((device) => {
+          if (device.id) {
+            uniqueIds.add(device.id);
+          }
+        });
+      });
+      const ids = Array.from(uniqueIds);
       setEspIds(ids);
       if (!ids.includes(selectedEspId)) {
         setSelectedEspId(ids[0] || "");
       }
     } catch (error) {
       console.error(error);
-      setSetupMessage("Unable to load ESP32 IDs.");
+      setMessage("Unable to load ESP32 IDs. Visit Status to set up sites.");
     }
   };
 
@@ -37,58 +44,6 @@ export default function FirmwarePage() {
     loadEspIds();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const persistEspIds = async (ids) => {
-    const res = await fetch("/api/esp32", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ids }),
-    });
-
-    if (!res.ok) {
-      throw new Error("Failed to save ESP32 IDs");
-    }
-
-    const data = await res.json();
-    setEspIds(data.ids || []);
-    if (!data.ids?.includes(selectedEspId)) {
-      setSelectedEspId(data.ids?.[0] || "");
-    }
-  };
-
-  const handleAddEspId = async (event) => {
-    event.preventDefault();
-    const trimmed = newEspId.trim();
-    if (!trimmed) {
-      setSetupMessage("Enter a valid ESP32 ID.");
-      return;
-    }
-    if (espIds.includes(trimmed)) {
-      setSetupMessage("That ESP32 ID already exists.");
-      return;
-    }
-
-    try {
-      const updated = [...espIds, trimmed];
-      await persistEspIds(updated);
-      setNewEspId("");
-      setSetupMessage("ESP32 ID added.");
-    } catch (error) {
-      console.error(error);
-      setSetupMessage("Unable to save ESP32 ID.");
-    }
-  };
-
-  const handleRemoveEspId = async (idToRemove) => {
-    try {
-      const updated = espIds.filter((id) => id !== idToRemove);
-      await persistEspIds(updated);
-      setSetupMessage("ESP32 ID removed.");
-    } catch (error) {
-      console.error(error);
-      setSetupMessage("Unable to remove ESP32 ID.");
-    }
-  };
 
   const uploadFile = async (file) => {
     if (!selectedEspId) {
@@ -142,53 +97,6 @@ export default function FirmwarePage() {
               <p className="text-gray-400 text-sm">Deploy new firmware to each ESP32 manually</p>
             </div>
 
-            <div className="rounded-2xl border border-slate-700/50 bg-slate-900/40 p-6 text-left space-y-4">
-              <div>
-                <h2 className="text-lg font-semibold text-gray-100">ESP32 Setup</h2>
-                <p className="text-sm text-gray-400">Add the ESP32 IDs for each feeder/site so you can update them individually.</p>
-              </div>
-              <form className="flex flex-col sm:flex-row gap-3" onSubmit={handleAddEspId}>
-                <input
-                  type="text"
-                  value={newEspId}
-                  onChange={(e) => setNewEspId(e.target.value)}
-                  placeholder="Enter ESP32 ID"
-                  className="flex-1 rounded-xl border border-slate-700 bg-slate-800/60 px-4 py-2 text-sm text-gray-100 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/60"
-                />
-                <button
-                  type="submit"
-                  className="rounded-xl bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-cyan-400 transition-colors"
-                >
-                  Add ID
-                </button>
-              </form>
-              {sortedEspIds.length === 0 ? (
-                <p className="text-sm text-gray-500">No ESP32 IDs saved yet.</p>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  {sortedEspIds.map((id) => (
-                    <span
-                      key={id}
-                      className="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-800/80 px-3 py-1 text-xs text-gray-200"
-                    >
-                      {id}
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveEspId(id)}
-                        className="rounded-full text-gray-400 hover:text-red-400"
-                        aria-label={`Remove ${id}`}
-                      >
-                        ×
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              )}
-              {setupMessage && (
-                <p className="text-xs text-cyan-300">{setupMessage}</p>
-              )}
-            </div>
-
             <div className="text-left space-y-2">
               <label className="text-sm font-medium text-gray-200">
                 Select ESP32 ID
@@ -199,7 +107,7 @@ export default function FirmwarePage() {
                 className="w-full rounded-xl border border-slate-700 bg-slate-800/60 px-4 py-2 text-sm text-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-500/60"
               >
                 {sortedEspIds.length === 0 ? (
-                  <option value="">Add an ESP32 ID first</option>
+                  <option value="">Set up a site first</option>
                 ) : (
                   <>
                     <option value="">Choose an ESP32</option>
@@ -211,6 +119,13 @@ export default function FirmwarePage() {
                   </>
                 )}
               </select>
+              <p className="text-xs text-gray-500">
+                Need to register devices? Visit the{" "}
+                <Link href="/status" className="text-cyan-400 hover:text-cyan-300 underline">
+                  Status
+                </Link>{" "}
+                page to add sites and ESP32 IDs.
+              </p>
             </div>
             
             <div

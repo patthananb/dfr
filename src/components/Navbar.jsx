@@ -23,6 +23,11 @@ export default function Navbar() {
               Firmware
             </Link>
           </li>
+          <li>
+            <Link href="/status" className="text-gray-300 hover:text-white transition-all duration-200 font-medium hover:scale-105 inline-block relative after:absolute after:bottom-[-4px] after:left-0 after:w-0 after:h-0.5 after:bg-gradient-to-r after:from-blue-400 after:to-cyan-400 hover:after:w-full after:transition-all after:duration-300">
+              Status
+            </Link>
+          </li>
         </ul>
       </div>
     </nav>
