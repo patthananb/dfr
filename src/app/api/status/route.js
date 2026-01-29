@@ -43,6 +43,7 @@ export async function GET() {
         statuses[device.id] = {
           online,
           lastSeen: record?.lastSeen || null,
+          firmwareVersion: record?.firmwareVersion || null,
         };
       });
     });
@@ -70,8 +71,15 @@ export async function POST(request) {
 
     const timestamp =
       typeof body.timestamp === "string" ? body.timestamp : null;
+    const firmwareVersion =
+      typeof body.firmwareVersion === "string"
+        ? body.firmwareVersion.trim()
+        : "";
     const heartbeat = await readHeartbeat();
-    heartbeat[espId] = { lastSeen: timestamp || new Date().toISOString() };
+    heartbeat[espId] = {
+      lastSeen: timestamp || new Date().toISOString(),
+      firmwareVersion: firmwareVersion || heartbeat[espId]?.firmwareVersion,
+    };
     await writeHeartbeat(heartbeat);
 
     return NextResponse.json({ success: true });

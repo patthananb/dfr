@@ -36,7 +36,7 @@ export default function FirmwarePage() {
       }
     } catch (error) {
       console.error(error);
-      setMessage("Unable to load ESP32 IDs. Visit Status to set up sites.");
+      setMessage("Unable to load ESP32 IDs. Visit Site Setup to register sites.");
     }
   };
 
@@ -121,8 +121,8 @@ export default function FirmwarePage() {
               </select>
               <p className="text-xs text-gray-500">
                 Need to register devices? Visit the{" "}
-                <Link href="/status" className="text-cyan-400 hover:text-cyan-300 underline">
-                  Status
+                <Link href="/sites/setup" className="text-cyan-400 hover:text-cyan-300 underline">
+                  Site Setup
                 </Link>{" "}
                 page to add sites and ESP32 IDs.
               </p>
