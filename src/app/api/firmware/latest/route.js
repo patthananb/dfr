@@ -2,9 +2,18 @@ import { NextResponse } from "next/server";
 import { readdir, stat, readFile } from "fs/promises";
 import { join } from "path";
 
-export async function GET() {
+export async function GET(request) {
   try {
-    const firmwareDir = join(process.cwd(), "firmware");
+    const { searchParams } = new URL(request.url);
+    const espId = searchParams.get("espId");
+    if (!espId) {
+      return NextResponse.json(
+        { error: "espId query parameter is required" },
+        { status: 400 }
+      );
+    }
+
+    const firmwareDir = join(process.cwd(), "firmware", espId);
 
     let entries;
     try {

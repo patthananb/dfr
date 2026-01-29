@@ -5,17 +5,18 @@ import { join } from "path";
 export async function POST(request) {
   const formData = await request.formData();
   const file = formData.get("file");
+  const espId = formData.get("espId");
 
-  if (!file) {
+  if (!file || !espId) {
     return NextResponse.json(
-      { success: false, error: "No file uploaded" },
+      { success: false, error: "Firmware file and ESP32 ID are required" },
       { status: 400 }
     );
   }
 
   const bytes = await file.arrayBuffer();
   const buffer = Buffer.from(bytes);
-  const firmwareDir = join(process.cwd(), "firmware");
+  const firmwareDir = join(process.cwd(), "firmware", espId.toString());
   await mkdir(firmwareDir, { recursive: true });
   await writeFile(join(firmwareDir, file.name), buffer);
 
