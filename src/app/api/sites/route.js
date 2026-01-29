@@ -127,3 +127,28 @@ export async function PUT(request) {
     );
   }
 }
+
+export async function DELETE(request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const siteId = searchParams.get("id");
+    if (!siteId) {
+      return NextResponse.json({ error: "Site ID is required" }, { status: 400 });
+    }
+
+    const sites = await readSites();
+    const updatedSites = sites.filter((site) => site.id !== siteId);
+    if (updatedSites.length === sites.length) {
+      return NextResponse.json({ error: "Site not found" }, { status: 404 });
+    }
+
+    await writeSites(updatedSites);
+    return NextResponse.json({ sites: sanitizeSites(updatedSites) });
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json(
+      { error: "Failed to remove site" },
+      { status: 500 }
+    );
+  }
+}

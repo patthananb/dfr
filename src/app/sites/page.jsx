@@ -8,6 +8,26 @@ export default function SitesPage() {
   const [statuses, setStatuses] = useState({});
   const [message, setMessage] = useState("");
 
+  const removeSite = async (siteId, siteName) => {
+    const shouldRemove = window.confirm(
+      `Remove ${siteName}? This cannot be undone.`
+    );
+    if (!shouldRemove) return;
+
+    try {
+      const res = await fetch(`/api/sites?id=${siteId}`, { method: "DELETE" });
+      if (!res.ok) {
+        const errorBody = await res.json();
+        throw new Error(errorBody.error || "Failed to remove site");
+      }
+      const data = await res.json();
+      setSites(Array.isArray(data.sites) ? data.sites : []);
+    } catch (error) {
+      console.error(error);
+      setMessage(error.message || "Unable to remove site.");
+    }
+  };
+
   const loadSites = async () => {
     try {
       const res = await fetch("/api/sites");
@@ -98,10 +118,9 @@ export default function SitesPage() {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {siteCards.map((site) => (
-              <Link
+              <div
                 key={site.id}
-                href={`/sites/${site.id}`}
-                className="rounded-2xl border border-slate-700/60 bg-slate-900/50 p-6 space-y-4 hover:border-cyan-500/60 hover:bg-slate-900/70 transition"
+                className="rounded-2xl border border-slate-700/60 bg-slate-900/50 p-6 space-y-4"
               >
                 <div className="space-y-1">
                   <h2 className="text-lg font-semibold text-gray-100">
@@ -114,13 +133,27 @@ export default function SitesPage() {
                     Devices: {site.devices.length}
                   </p>
                 </div>
-                <div className="flex items-center justify-between text-xs text-gray-400">
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-400">
                   <span>
                     Online: {site.onlineCount}/{site.devices.length}
                   </span>
-                  <span className="text-cyan-300">View details →</span>
+                  <div className="flex items-center gap-3">
+                    <Link
+                      href={`/sites/${site.id}`}
+                      className="text-cyan-300 hover:text-cyan-200"
+                    >
+                      View details →
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => removeSite(site.id, site.name)}
+                      className="text-red-300 hover:text-red-200"
+                    >
+                      Remove
+                    </button>
+                  </div>
                 </div>
-              </Link>
+              </div>
             ))}
           </div>
         )}
