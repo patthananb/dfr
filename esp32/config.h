@@ -28,4 +28,31 @@
 // Set to 1 to accept OTA updates automatically, 0 to require force flag
 #define AUTO_UPDATE       1
 
+// ─── ADC Sampling ───────────────────────────────────────
+// GPIO pins for 8 ADC channels (must be ADC1 pins: GPIO 32–39)
+#define ADC_PIN_V1        32
+#define ADC_PIN_V2        33
+#define ADC_PIN_V3        34
+#define ADC_PIN_I1        35
+#define ADC_PIN_I2        36
+#define ADC_PIN_I3        39
+#define ADC_PIN_A         25    // ADC2 — avoid during WiFi if issues arise
+#define ADC_PIN_B         26    // ADC2 — avoid during WiFi if issues arise
+
+// Number of samples per capture batch
+#define ADC_SAMPLES       256
+
+// Timer interrupt sample rate in microseconds (per-sample interval)
+// 1000 µs = 1 kHz sample rate, 500 µs = 2 kHz, 250 µs = 4 kHz
+#define ADC_SAMPLE_INTERVAL_US  1000  // 1 kHz
+
+// Interval between ADC capture-and-upload cycles (milliseconds)
+#define ADC_UPLOAD_INTERVAL_MS  5000  // 5 seconds
+
+// ADC resolution (9–12 bits on ESP32)
+#define ADC_RESOLUTION    12
+
+// ADC attenuation (ADC_ATTEN_DB_12 = 0–3.3V full range)
+#define ADC_ATTENUATION   ADC_ATTEN_DB_12
+
 #endif // DFR_CONFIG_H
