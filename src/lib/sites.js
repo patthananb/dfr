@@ -25,6 +25,12 @@ export async function writeSites(sites) {
   await writeFile(SITES_FILE, JSON.stringify({ sites }, null, 2));
 }
 
+export function getAllDeviceIds(sites) {
+  const ids = new Set();
+  sites.forEach((s) => s.devices?.forEach((d) => d.id && ids.add(d.id)));
+  return Array.from(ids);
+}
+
 export function sanitizeSites(sites) {
   return sites.map((site) => ({
     id: site.id,

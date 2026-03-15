@@ -1,35 +1,17 @@
 import { NextResponse } from "next/server";
-import { mkdir, readFile, writeFile } from "fs/promises";
 import { join } from "path";
 import { readSites } from "@/lib/sites";
+import { readJSON, updateJSON } from "@/lib/json-store";
 
 const DATA_DIR = join(process.cwd(), "data");
 const HEARTBEAT_FILE = join(DATA_DIR, "heartbeat.json");
 const ONLINE_WINDOW_MS = 5 * 60 * 1000;
 
-async function readHeartbeat() {
-  try {
-    const raw = await readFile(HEARTBEAT_FILE, "utf-8");
-    const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === "object" ? parsed : {};
-  } catch (error) {
-    if (error.code === "ENOENT") {
-      return {};
-    }
-    throw error;
-  }
-}
-
-async function writeHeartbeat(data) {
-  await mkdir(DATA_DIR, { recursive: true });
-  await writeFile(HEARTBEAT_FILE, JSON.stringify(data, null, 2));
-}
-
 export async function GET() {
   try {
     const [sites, heartbeat] = await Promise.all([
       readSites(),
-      readHeartbeat(),
+      readJSON(HEARTBEAT_FILE),
     ]);
     const now = Date.now();
     const statuses = {};
@@ -82,16 +64,17 @@ export async function POST(request) {
     const uptime = typeof body.uptime === "number" ? body.uptime : undefined;
     const freeHeap = typeof body.freeHeap === "number" ? body.freeHeap : undefined;
 
-    const heartbeat = await readHeartbeat();
-    heartbeat[espId] = {
-      ...heartbeat[espId],
-      lastSeen: timestamp || new Date().toISOString(),
-      firmwareVersion: firmwareVersion || heartbeat[espId]?.firmwareVersion,
-      ...(rssi !== undefined && { rssi }),
-      ...(uptime !== undefined && { uptime }),
-      ...(freeHeap !== undefined && { freeHeap }),
-    };
-    await writeHeartbeat(heartbeat);
+    await updateJSON(HEARTBEAT_FILE, (heartbeat) => {
+      heartbeat[espId] = {
+        ...heartbeat[espId],
+        lastSeen: timestamp || new Date().toISOString(),
+        firmwareVersion: firmwareVersion || heartbeat[espId]?.firmwareVersion,
+        ...(rssi !== undefined && { rssi }),
+        ...(uptime !== undefined && { uptime }),
+        ...(freeHeap !== undefined && { freeHeap }),
+      };
+      return heartbeat;
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

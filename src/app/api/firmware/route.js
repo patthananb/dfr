@@ -1,31 +1,11 @@
 import { NextResponse } from "next/server";
-import { writeFile, readFile, mkdir } from "fs/promises";
+import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { createHash } from "crypto";
 import { signManifest } from "@/lib/crypto";
-
-const FIRMWARE_DIR = join(process.cwd(), "firmware");
-
-function manifestPath(espId) {
-  return join(FIRMWARE_DIR, espId, "manifest.json");
-}
-
-async function readManifest(espId) {
-  try {
-    const raw = await readFile(manifestPath(espId), "utf-8");
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed.versions) ? parsed : { versions: [], active: null };
-  } catch (err) {
-    if (err.code === "ENOENT") return { versions: [], active: null };
-    throw err;
-  }
-}
-
-async function writeManifest(espId, manifest) {
-  const dir = join(FIRMWARE_DIR, espId);
-  await mkdir(dir, { recursive: true });
-  await writeFile(manifestPath(espId), JSON.stringify(manifest, null, 2));
-}
+import { isSafePathSegment } from "@/lib/validate";
+import { FIRMWARE_DIR, readManifest, writeManifest } from "@/lib/firmware";
+import { readSites, getAllDeviceIds } from "@/lib/sites";
 
 // GET  /api/firmware?espId=...  — list firmware history for a device
 // GET  /api/firmware              — list firmware history for ALL devices
@@ -35,15 +15,16 @@ export async function GET(request) {
     const espId = searchParams.get("espId");
 
     if (espId) {
+      if (!isSafePathSegment(espId)) {
+        return NextResponse.json({ error: "Invalid ESP32 ID" }, { status: 400 });
+      }
       const manifest = await readManifest(espId);
       return NextResponse.json({ espId, ...manifest });
     }
 
     // Return firmware info for every device across all sites
-    const { readSites } = await import("@/lib/sites");
     const sites = await readSites();
-    const deviceIds = new Set();
-    sites.forEach((s) => s.devices?.forEach((d) => d.id && deviceIds.add(d.id)));
+    const deviceIds = getAllDeviceIds(sites);
 
     const result = {};
     for (const id of deviceIds) {
@@ -72,21 +53,31 @@ export async function POST(request) {
       );
     }
 
+    const espIdStr = espId.toString().trim();
+    if (!isSafePathSegment(espIdStr)) {
+      return NextResponse.json({ success: false, error: "Invalid ESP32 ID" }, { status: 400 });
+    }
+
+    const sanitizedFilename = file.name.replace(/[/\\]/g, "_");
+    if (!isSafePathSegment(sanitizedFilename)) {
+      return NextResponse.json({ success: false, error: "Invalid filename" }, { status: 400 });
+    }
+
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
     // Compute SHA-256 hash
     const sha256 = createHash("sha256").update(buffer).digest("hex");
 
-    const firmwareDir = join(FIRMWARE_DIR, espId.toString());
+    const firmwareDir = join(FIRMWARE_DIR, espIdStr);
     await mkdir(firmwareDir, { recursive: true });
-    await writeFile(join(firmwareDir, file.name), buffer);
+    await writeFile(join(firmwareDir, sanitizedFilename), buffer);
 
     // Update manifest
-    const manifest = await readManifest(espId);
-    const signature = signManifest({ version: version || "", sha256, filename: file.name });
+    const manifest = await readManifest(espIdStr);
+    const signature = signManifest({ version: version || "", sha256, filename: sanitizedFilename });
     const entry = {
-      filename: file.name,
+      filename: sanitizedFilename,
       version: version || null,
       size: buffer.length,
       sha256,
@@ -96,13 +87,13 @@ export async function POST(request) {
     };
 
     // Remove previous entry with the same filename (overwrite)
-    manifest.versions = manifest.versions.filter((v) => v.filename !== file.name);
+    manifest.versions = manifest.versions.filter((v) => v.filename !== sanitizedFilename);
     manifest.versions.push(entry);
 
     // Auto-set as active
-    manifest.active = file.name;
+    manifest.active = sanitizedFilename;
 
-    await writeManifest(espId, manifest);
+    await writeManifest(espIdStr, manifest);
 
     return NextResponse.json({ success: true, entry, active: manifest.active });
   } catch (err) {
@@ -123,6 +114,10 @@ export async function PUT(request) {
         { error: "espId and active filename are required" },
         { status: 400 }
       );
+    }
+
+    if (!isSafePathSegment(espId)) {
+      return NextResponse.json({ error: "Invalid ESP32 ID" }, { status: 400 });
     }
 
     const manifest = await readManifest(espId);
@@ -156,6 +151,10 @@ export async function DELETE(request) {
         { error: "espId and filename are required" },
         { status: 400 }
       );
+    }
+
+    if (!isSafePathSegment(espId) || !isSafePathSegment(filename)) {
+      return NextResponse.json({ error: "Invalid ESP32 ID or filename" }, { status: 400 });
     }
 
     const manifest = await readManifest(espId);

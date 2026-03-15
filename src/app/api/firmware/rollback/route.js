@@ -1,24 +1,6 @@
 import { NextResponse } from "next/server";
-import { readFile, writeFile, mkdir } from "fs/promises";
-import { join } from "path";
-
-const FIRMWARE_DIR = join(process.cwd(), "firmware");
-
-async function readManifest(espId) {
-  try {
-    const raw = await readFile(join(FIRMWARE_DIR, espId, "manifest.json"), "utf-8");
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed.versions) ? parsed : { versions: [], active: null };
-  } catch {
-    return { versions: [], active: null };
-  }
-}
-
-async function writeManifest(espId, manifest) {
-  const dir = join(FIRMWARE_DIR, espId);
-  await mkdir(dir, { recursive: true });
-  await writeFile(join(dir, "manifest.json"), JSON.stringify(manifest, null, 2));
-}
+import { isSafePathSegment } from "@/lib/validate";
+import { readManifest, writeManifest } from "@/lib/firmware";
 
 // POST /api/firmware/rollback  { espId }
 // Sets active firmware to the previous version (by uploadedAt)
@@ -29,6 +11,10 @@ export async function POST(request) {
 
     if (!espId) {
       return NextResponse.json({ error: "espId is required" }, { status: 400 });
+    }
+
+    if (!isSafePathSegment(espId)) {
+      return NextResponse.json({ error: "Invalid ESP32 ID" }, { status: 400 });
     }
 
     const manifest = await readManifest(espId);

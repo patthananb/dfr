@@ -1,18 +1,8 @@
 import { NextResponse } from "next/server";
 import { readdir, stat, readFile } from "fs/promises";
 import { join } from "path";
-
-const FIRMWARE_DIR = join(process.cwd(), "firmware");
-
-async function readManifest(espId) {
-  try {
-    const raw = await readFile(join(FIRMWARE_DIR, espId, "manifest.json"), "utf-8");
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed.versions) ? parsed : { versions: [], active: null };
-  } catch {
-    return { versions: [], active: null };
-  }
-}
+import { isSafePathSegment } from "@/lib/validate";
+import { FIRMWARE_DIR, readManifest } from "@/lib/firmware";
 
 export async function GET(request) {
   try {
@@ -23,6 +13,10 @@ export async function GET(request) {
         { error: "espId query parameter is required" },
         { status: 400 }
       );
+    }
+
+    if (!isSafePathSegment(espId)) {
+      return NextResponse.json({ error: "Invalid ESP32 ID" }, { status: 400 });
     }
 
     const firmwareDir = join(FIRMWARE_DIR, espId);
@@ -39,7 +33,7 @@ export async function GET(request) {
           status: 200,
           headers: {
             "Content-Type": "application/octet-stream",
-            "Content-Disposition": `attachment; filename="${targetFile}"`,
+            "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(targetFile)}`,
             "Content-Length": fileBuffer.length.toString(),
             "Content-Encoding": "identity",
             "Cache-Control": "no-store, no-transform",
@@ -94,7 +88,7 @@ export async function GET(request) {
       status: 200,
       headers: {
         "Content-Type": "application/octet-stream",
-        "Content-Disposition": `attachment; filename="${latest}"`,
+        "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(latest)}`,
         "Content-Length": fileSize.toString(),
         "Content-Encoding": "identity",
         "Cache-Control": "no-store, no-transform",

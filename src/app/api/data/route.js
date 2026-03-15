@@ -1,7 +1,8 @@
 
 import { NextResponse } from 'next/server';
 import { mkdir, readdir, readFile, writeFile } from 'fs/promises';
-import { join, basename } from 'path';
+import { join } from 'path';
+import { isSafePathSegment } from '@/lib/validate';
 
 const DATA_DIR = join(process.cwd(), 'data');
 
@@ -12,9 +13,10 @@ export async function GET(request) {
 
   try {
     if (filename) {
-      // If a filename is provided, read and return that file's content
-      const safe = basename(filename);
-      const filePath = join(DATA_DIR, safe);
+      if (!isSafePathSegment(filename)) {
+        return NextResponse.json({ success: false, error: 'Invalid filename' }, { status: 400 });
+      }
+      const filePath = join(DATA_DIR, filename);
       const fileContent = await readFile(filePath, 'utf-8');
       return NextResponse.json({ success: true, files: [fileContent] });
     }
@@ -39,7 +41,7 @@ export async function GET(request) {
     return NextResponse.json({ success: true, filenames });
   } catch (error) {
     console.error('Error reading data files:', error);
-    return NextResponse.json({ success: false, error: 'Error reading data files' });
+    return NextResponse.json({ success: false, error: 'Error reading data files' }, { status: 500 });
   }
 }
 

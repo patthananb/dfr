@@ -1,34 +1,12 @@
 import { NextResponse } from "next/server";
-import { readFile, writeFile, mkdir } from "fs/promises";
 import { join } from "path";
+import { isSafePathSegment } from "@/lib/validate";
+import { readJSON, updateJSON } from "@/lib/json-store";
+import { readManifest } from "@/lib/firmware";
 
-const FIRMWARE_DIR = join(process.cwd(), "firmware");
 const DATA_DIR = join(process.cwd(), "data");
 const HEARTBEAT_FILE = join(DATA_DIR, "heartbeat.json");
 const FORCE_FILE = join(DATA_DIR, "force-updates.json");
-
-async function readManifest(espId) {
-  try {
-    const raw = await readFile(join(FIRMWARE_DIR, espId, "manifest.json"), "utf-8");
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed.versions) ? parsed : { versions: [], active: null };
-  } catch {
-    return { versions: [], active: null };
-  }
-}
-
-async function readJSON(filePath) {
-  try {
-    return JSON.parse(await readFile(filePath, "utf-8"));
-  } catch {
-    return {};
-  }
-}
-
-async function writeJSON(filePath, data) {
-  await mkdir(DATA_DIR, { recursive: true });
-  await writeFile(filePath, JSON.stringify(data, null, 2));
-}
 
 // GET /api/firmware/check?espId=...&currentVersion=...
 // OTA check-in endpoint for ESP32 devices
@@ -42,14 +20,19 @@ export async function GET(request) {
       return NextResponse.json({ error: "espId is required" }, { status: 400 });
     }
 
-    // Record heartbeat
-    const heartbeat = await readJSON(HEARTBEAT_FILE);
-    heartbeat[espId] = {
-      ...heartbeat[espId],
-      lastSeen: new Date().toISOString(),
-      firmwareVersion: currentVersion || heartbeat[espId]?.firmwareVersion,
-    };
-    await writeJSON(HEARTBEAT_FILE, heartbeat);
+    if (!isSafePathSegment(espId)) {
+      return NextResponse.json({ error: "Invalid ESP32 ID" }, { status: 400 });
+    }
+
+    // Record heartbeat atomically
+    await updateJSON(HEARTBEAT_FILE, (heartbeat) => {
+      heartbeat[espId] = {
+        ...heartbeat[espId],
+        lastSeen: new Date().toISOString(),
+        firmwareVersion: currentVersion || heartbeat[espId]?.firmwareVersion,
+      };
+      return heartbeat;
+    });
 
     // Read manifest
     const manifest = await readManifest(espId);
@@ -71,10 +54,12 @@ export async function GET(request) {
       return NextResponse.json({ update: false });
     }
 
-    // Clear force flag after acknowledging
+    // Clear force flag after acknowledging (atomically)
     if (isForced) {
-      delete forceFlags[espId];
-      await writeJSON(FORCE_FILE, forceFlags);
+      await updateJSON(FORCE_FILE, (flags) => {
+        delete flags[espId];
+        return flags;
+      });
     }
 
     return NextResponse.json({

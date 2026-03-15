@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useState, useRef, useCallback } from 'react';
+import { Suspense, useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Line } from 'react-chartjs-2';
 import {
@@ -43,6 +43,9 @@ const formatDate = dateStr => {
 
 const formatTime = timeStr => (timeStr ? timeStr.slice(0, 5) : '');
 
+const safeMin = (arr) => arr.length > 0 ? Math.min(...arr) : 0;
+const safeMax = (arr) => arr.length > 0 ? Math.max(...arr) : 0;
+
 const parseFileData = (json) => {
   if (!Array.isArray(json.data)) return null;
 
@@ -50,22 +53,24 @@ const parseFileData = (json) => {
   const samples = json.data;
   const labels = samples.map(p => p.n);
 
+  const withStats = (ds) => ({ ...ds, min: safeMin(ds.data), max: safeMax(ds.data) });
+
   const voltageDatasets = [
     { key: 'v1', label: 'V1', data: samples.map(p => p.v1), borderColor: 'red' },
     { key: 'v2', label: 'V2', data: samples.map(p => p.v2), borderColor: 'green' },
     { key: 'v3', label: 'V3', data: samples.map(p => p.v3), borderColor: 'blue' },
-  ].map(ds => ({ ...ds, min: Math.min(...ds.data), max: Math.max(...ds.data) }));
+  ].map(withStats);
 
   const currentDatasets = [
     { key: 'i1', label: 'I1', data: samples.map(p => p.i1), borderColor: 'orange' },
     { key: 'i2', label: 'I2', data: samples.map(p => p.i2), borderColor: 'purple' },
     { key: 'i3', label: 'I3', data: samples.map(p => p.i3), borderColor: 'teal' },
-  ].map(ds => ({ ...ds, min: Math.min(...ds.data), max: Math.max(...ds.data) }));
+  ].map(withStats);
 
   const abDatasets = [
     { key: 'A', label: 'A', data: samples.map(p => p.A), borderColor: 'yellow' },
     { key: 'B', label: 'B', data: samples.map(p => p.B), borderColor: 'pink' },
-  ].map(ds => ({ ...ds, min: Math.min(...ds.data), max: Math.max(...ds.data) }));
+  ].map(withStats);
 
   return {
     faultInfo: { faultType, date, time, faultLocation, sampleRateHz },
@@ -234,10 +239,35 @@ const GraphContent = () => {
     }
   });
 
-  const sliceDatasets = (chartData) =>
+  const sliceDatasets = useCallback((chartData) =>
     chartData.datasets
       .filter(ds => visible[ds.key])
-      .map(ds => ({ ...ds, tension: 0.1, data: ds.data.slice(offset, offset + scale) }));
+      .map(ds => ({ ...ds, tension: 0.1, data: ds.data.slice(offset, offset + scale) })),
+  [visible, offset, scale]);
+
+  const slicedVoltage = useMemo(() => {
+    if (!voltageData) return null;
+    return {
+      labels: voltageData.labels.slice(offset, offset + scale),
+      datasets: sliceDatasets(voltageData),
+    };
+  }, [voltageData, offset, scale, sliceDatasets]);
+
+  const slicedCurrent = useMemo(() => {
+    if (!currentData) return null;
+    return {
+      labels: currentData.labels.slice(offset, offset + scale),
+      datasets: sliceDatasets(currentData),
+    };
+  }, [currentData, offset, scale, sliceDatasets]);
+
+  const slicedAb = useMemo(() => {
+    if (!abData) return null;
+    return {
+      labels: abData.labels.slice(offset, offset + scale),
+      datasets: sliceDatasets(abData),
+    };
+  }, [abData, offset, scale, sliceDatasets]);
 
   return (
     <div className="flex flex-col flex-1 p-4 sm:p-8 text-gray-100">
@@ -340,10 +370,7 @@ const GraphContent = () => {
             <div className="w-full max-w-3xl bg-slate-800/50 rounded-xl p-6 border border-slate-700/50">
               <h2 className="text-center mb-4 text-2xl font-bold text-blue-400">Voltage</h2>
               <Line
-                data={{
-                  labels: voltageData.labels.slice(offset, offset + scale),
-                  datasets: sliceDatasets(voltageData),
-                }}
+                data={slicedVoltage}
                 options={chartOptions('Voltage [V]')}
               />
               <div className="flex justify-center gap-6 mt-4">
@@ -370,10 +397,7 @@ const GraphContent = () => {
               <div className="w-full max-w-3xl bg-slate-800/50 rounded-xl p-6 border border-slate-700/50">
                 <h2 className="text-center mb-4 text-2xl font-bold text-purple-400">Current</h2>
                 <Line
-                  data={{
-                    labels: currentData.labels.slice(offset, offset + scale),
-                    datasets: sliceDatasets(currentData),
-                  }}
+                  data={slicedCurrent}
                   options={chartOptions('Current [A]')}
                 />
                 <div className="flex justify-center gap-6 mt-4">
@@ -400,10 +424,7 @@ const GraphContent = () => {
               <div className="w-full max-w-3xl bg-slate-800/50 rounded-xl p-6 border border-slate-700/50">
                 <h2 className="text-center mb-4 text-2xl font-bold text-teal-400">A & B</h2>
                 <Line
-                  data={{
-                    labels: abData.labels.slice(offset, offset + scale),
-                    datasets: sliceDatasets(abData),
-                  }}
+                  data={slicedAb}
                   options={chartOptions('A/B')}
                 />
                 <div className="flex justify-center gap-6 mt-4">
@@ -465,7 +486,7 @@ const GraphContent = () => {
           </div>
         </div>
       ) : (
-        <p className="text-gray-300 text-center text-lg">Loading data...</p>
+        <p className="text-gray-300 text-center text-lg" role="status" aria-live="polite">Loading data...</p>
       )}
       </div>
     </div>

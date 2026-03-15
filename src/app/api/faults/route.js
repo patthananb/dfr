@@ -30,8 +30,13 @@ export async function GET(request) {
 
     const faults = [];
     for (const file of files) {
-      const content = await readFile(join(DATA_DIR, file), "utf-8");
-      const parsed = JSON.parse(content);
+      let parsed;
+      try {
+        const content = await readFile(join(DATA_DIR, file), "utf-8");
+        parsed = JSON.parse(content);
+      } catch {
+        continue; // skip malformed files
+      }
       if (!parsed.faultType || !parsed.faultLocation) {
         continue;
       }

@@ -16,11 +16,10 @@ export default function SitesPage() {
 
     try {
       const res = await fetch(`/api/sites?id=${siteId}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const errorBody = await res.json();
-        throw new Error(errorBody.error || "Failed to remove site");
+        throw new Error(data.error || "Failed to remove site");
       }
-      const data = await res.json();
       setSites(Array.isArray(data.sites) ? data.sites : []);
     } catch (error) {
       console.error(error);
@@ -148,6 +147,7 @@ export default function SitesPage() {
                       type="button"
                       onClick={() => removeSite(site.id, site.name)}
                       className="text-red-300 hover:text-red-200"
+                      aria-label={`Remove site ${site.name}`}
                     >
                       Remove
                     </button>

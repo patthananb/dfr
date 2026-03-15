@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 
 function formatBytes(bytes) {
@@ -77,9 +77,18 @@ export default function FirmwarePage() {
     }));
   }, [deployMode, selectedSiteId, espIds, sites, statuses]);
 
+  const msgTimerRef = useRef(null);
   const setMsg = useCallback((text, type = "info") => {
     setMessage(text);
     setMessageType(type);
+    if (msgTimerRef.current) clearTimeout(msgTimerRef.current);
+    if (type === "success" || type === "info") {
+      msgTimerRef.current = setTimeout(() => setMessage(""), 8000);
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => { if (msgTimerRef.current) clearTimeout(msgTimerRef.current); };
   }, []);
 
   const loadSites = async () => {
@@ -166,6 +175,7 @@ export default function FirmwarePage() {
     setMsg(`Uploading to ${targetIds.length} device(s)...`, "info");
 
     let successCount = 0;
+    const failedIds = [];
     for (let i = 0; i < targetIds.length; i++) {
       const id = targetIds[i];
       const formData = new FormData();
@@ -179,9 +189,13 @@ export default function FirmwarePage() {
           method: "POST",
           body: formData,
         });
-        if (res.ok) successCount++;
+        if (res.ok) {
+          successCount++;
+        } else {
+          failedIds.push(id);
+        }
       } catch {
-        // continue to next device
+        failedIds.push(id);
       }
       setUploadProgress(Math.round(((i + 1) / targetIds.length) * 100));
     }
@@ -190,7 +204,7 @@ export default function FirmwarePage() {
     if (successCount === targetIds.length) {
       setMsg(`Uploaded "${file.name}" to ${successCount} device(s) successfully.`, "success");
     } else {
-      setMsg(`Uploaded to ${successCount}/${targetIds.length} devices. Some failed.`, "error");
+      setMsg(`Uploaded to ${successCount}/${targetIds.length} devices. Failed: ${failedIds.join(", ")}`, "error");
     }
     setReleaseNotes("");
     loadFirmware();
