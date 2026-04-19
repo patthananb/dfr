@@ -7,7 +7,8 @@ A full-stack IoT system for monitoring electrical faults and managing ESP32 firm
 | Layer | Technology |
 |-------|-----------|
 | Frontend | Next.js 15 (App Router), React 19, Tailwind CSS 4, Chart.js 4.5 |
-| Backend | Next.js API Routes, Node.js `fs/promises`, JSON file persistence |
+| Backend | Next.js API Routes, Prisma ORM (SQLite default, Postgres-ready), legacy JSON persistence behind `USE_DB` flag |
+| Deployment | Docker multi-stage build, docker-compose with named volumes |
 | ESP32 | Arduino Core, WiFi, HTTPClient, Update, ArduinoJson, mbedtls |
 
 ## Getting Started
@@ -36,12 +37,27 @@ cp .env.example .env
 | Variable | Description |
 |----------|-------------|
 | `FIRMWARE_HMAC_SECRET` | Shared secret for firmware signing. Must match `HMAC_SECRET` in `esp32/config.h`. |
+| `DATABASE_URL` | Prisma datasource. Defaults to `file:../data/dfr.db` (SQLite). Swap for a `postgresql://...` URL and flip the provider in `prisma/schema.prisma` to use Postgres. |
+| `USE_DB` | `1`/`true`/`on` to route persistence through Prisma. Unset/false keeps the legacy JSON file backend. |
+
+### Database Setup
+
+Prisma is used for structured persistence. The default provider is SQLite and the DB file lives at `data/dfr.db` (git-ignored).
+
+```bash
+npm run db:migrate        # Apply migrations in dev (creates data/dfr.db)
+npm run db:deploy         # Apply migrations in prod (no schema drift)
+npm run db:studio         # Open Prisma Studio
+npm run db:migrate-data   # One-shot import from existing JSON files into the DB
+```
+
+The migration importer reads `data/sites.json`, `data/heartbeat.json`, `data/force-updates.json`, `data/*.json` fault recordings, and `firmware/{espId}/manifest.json`. It is idempotent — use `--dry-run` to preview and `--wipe` to truncate before re-running.
 
 ### Running
 
 ```bash
 npm run dev      # Development server on http://localhost:3000
-npm run build    # Production build
+npm run build    # Production build (runs prisma generate first)
 npm run start    # Start production server
 npm run lint     # Run ESLint
 ```
@@ -80,16 +96,31 @@ dfr/
 │   └── lib/
 │       ├── validate.js       Path traversal prevention
 │       ├── json-store.js     Atomic JSON read-modify-write with locking
-│       ├── firmware.js       Shared firmware manifest operations
 │       ├── crypto.js         HMAC-SHA256 signing/verification
-│       └── sites.js          Site data helpers
-├── data/                     Runtime — fault JSON files, heartbeat, sites
+│       ├── db.js             Prisma client singleton
+│       ├── feature-flags.js  `isDbEnabled()` — USE_DB switch
+│       ├── firmware.js       Shared firmware manifest helpers (JSON path)
+│       ├── sites.js          Site data helpers (JSON path)
+│       └── repos/            Backend-agnostic repo layer (sites, status,
+│                             firmware, faults, force-updates) that branches
+│                             on USE_DB between JSON and Prisma
+├── prisma/
+│   ├── schema.prisma         DB schema (Site, Device, Heartbeat, Fault,
+│   │                         FirmwareVersion, ForceUpdate)
+│   └── migrations/           Prisma-managed SQL migrations
+├── scripts/
+│   └── migrate-json-to-db.mjs  One-shot JSON → DB importer
+├── docker/
+│   └── entrypoint.sh         Runs `prisma migrate deploy` then starts the app
+├── Dockerfile                Multi-stage build (deps → build → runner)
+├── docker-compose.yml        Web service + named volumes (Postgres commented)
+├── data/                     Runtime — SQLite DB, fault JSON files, heartbeat, sites
 ├── firmware/                 Runtime — firmware binaries per device
 ├── send-dummy-data.sh        Test data generator
 └── CLAUDE.md                 AI assistant guidance
 ```
 
-Both `data/` and `firmware/` are git-ignored and created at runtime.
+Both `data/` and `firmware/` are git-ignored and created at runtime. The SQLite database (`data/dfr.db`) is also git-ignored.
 
 ## Web Pages
 
@@ -207,11 +238,38 @@ The Arduino sketch in `esp32/` handles three tasks:
 | `ADC_SAMPLES` | `256` | Samples per batch |
 | `ADC_RESOLUTION` | `12` | ADC bit resolution (9–12) |
 
+## Persistence
+
+The app supports two interchangeable backends behind a single repo layer (`src/lib/repos/`). Every API route calls the repo, and the repo branches on `isDbEnabled()`:
+
+| Backend | When active | Where state lives |
+|---------|-------------|-------------------|
+| JSON (legacy) | `USE_DB` unset/false | `data/*.json`, `firmware/{espId}/manifest.json` |
+| Prisma | `USE_DB=1` | `data/dfr.db` (SQLite) or Postgres via `DATABASE_URL` |
+
+Firmware binaries stay on disk under `firmware/{espId}/` in both backends — only the manifest metadata moves into the DB. This preserves the byte-identical binary that the HMAC signature was computed over, which is required for the ESP32 to accept the update.
+
+The `FirmwareVersion`, `Heartbeat`, `Fault`, and `ForceUpdate` tables use indexed `espId` columns so per-device lookups stay fast as the dataset grows. Fault payloads are stored as JSON (TEXT on SQLite, JSONB on Postgres).
+
+## Docker Deployment
+
+```bash
+docker compose up --build
+```
+
+The bundled `Dockerfile` uses a multi-stage build (deps → build → runner) on `node:20-slim`, produces the Next.js standalone output, and runs as a non-root user. The `docker/entrypoint.sh` script runs `prisma migrate deploy` on startup, then execs the app.
+
+`docker-compose.yml` mounts two named volumes so state survives container restarts:
+- `dfr-data` → `/app/data` (SQLite DB + fault JSON)
+- `dfr-firmware` → `/app/firmware` (firmware binaries)
+
+A commented-out `db` service is included for the Postgres path — uncomment it, flip `DATABASE_URL` and the `provider` in `prisma/schema.prisma`, and rebuild.
+
 ## Security
 
 - All API routes validate path segments with `isSafePathSegment()` to prevent path traversal
 - Firmware manifests are signed with HMAC-SHA256; the ESP32 verifies signatures before flashing
 - HMAC comparison uses timing-safe equality to prevent timing attacks
-- JSON file writes use atomic temp-file + rename to prevent corruption
-- Concurrent writes are serialized with in-process mutex locking
+- JSON backend: writes use atomic temp-file + rename and are serialized with an in-process mutex
+- Prisma backend: multi-step updates run inside `prisma.$transaction` to preserve invariants (e.g. site device-set replacement)
 - WiFi passwords are stripped from all API responses via `sanitizeSites()`
