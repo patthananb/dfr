@@ -52,3 +52,20 @@ This directory contains the Arduino core firmware for the DFR (Data Fault Record
 - Use `Serial.printf()` for structured logging.
 - Prefix log messages with the subsystem name in brackets (e.g., `[wifi]`, `[ota]`, `[adc]`).
 - Ensure `Serial.begin(115200)` is called early in `setup()`.
+
+## Building & Exporting
+
+To generate the firmware binary for OTA updates:
+
+### Arduino IDE 2.x
+1. Open `esp32.ino`.
+2. Select the correct board (e.g., "ESP32 Dev Module").
+3. Go to **Sketch** → **Export Compiled Binary**.
+4. The `.bin` file will be in the sketch directory.
+
+### Arduino CLI
+```bash
+arduino-cli compile --fqbn esp32:esp32:esp32 --output-dir ./output ./esp32.ino
+```
+
+Use the generated `.bin` file when uploading via the web dashboard.
