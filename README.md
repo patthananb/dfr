@@ -78,7 +78,8 @@ This creates JSON files in `data/` with 1000 samples across 8 channels (V1–V3,
 dfr/
 ├── esp32/                    ESP32 Arduino firmware
 │   ├── esp32.ino             Main firmware (OTA client + ADC sampler)
-│   └── config.h              WiFi, server, ADC, timing configuration
+│   ├── config.h              WiFi, server, ADC, timing configuration
+│   └── README.md             ESP32 coding guidelines and hardware details
 ├── src/
 │   ├── app/
 │   │   ├── page.js           Home — latest fault summary
@@ -213,6 +214,8 @@ The Arduino sketch in `esp32/` handles three tasks:
 1. **Heartbeat** — sends device status (RSSI, uptime, free heap, firmware version) to `POST /api/status` every 60 seconds
 2. **OTA updates** — checks `GET /api/firmware/check` every 5 minutes; downloads, verifies (SHA-256 + HMAC-SHA256), and flashes new firmware
 3. **ADC sampling** — reads 8 channels via hardware timer interrupt and uploads batches to `POST /api/data`
+
+See [esp32/README.md](esp32/README.md) for coding guidelines, hardware details, and best practices.
 
 ### ADC Pin Assignments
 
