@@ -51,6 +51,8 @@ model Heartbeat {
   ts              DateTime @default(now())
   ip              String?
   rssi            Int?
+  uptime          Int?
+  freeHeap        Int?
   firmwareVersion String?
 
   device Device @relation(fields: [espId], references: [espId], onDelete: Cascade)

@@ -10,7 +10,8 @@
     "postinstall": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "db:migrate-data": "node scripts/migrate-json-to-db.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

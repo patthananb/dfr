@@ -53,6 +53,8 @@ export async function getStatuses(deviceIds) {
             lastSeen: row.ts.toISOString(),
             firmwareVersion: row.firmwareVersion,
             rssi: row.rssi,
+            uptime: row.uptime,
+            freeHeap: row.freeHeap,
           }
         : null,
       now
@@ -89,13 +91,24 @@ export async function recordHeartbeat(
     create: { espId },
   });
 
+  // Partial check-ins (e.g. from firmware/check) only set firmwareVersion.
+  // To match the JSON backend — which spreads the previous object — we
+  // carry forward the prior row's rssi/uptime/freeHeap/firmwareVersion/ip
+  // when the new call didn't specify them.
+  const prior = await prisma.heartbeat.findFirst({
+    where: { espId },
+    orderBy: { ts: "desc" },
+  });
+
   await prisma.heartbeat.create({
     data: {
       espId,
       ts: timestamp ? new Date(timestamp) : new Date(),
-      ip: ip || null,
-      rssi: rssi ?? null,
-      firmwareVersion: firmwareVersion || null,
+      ip: ip ?? prior?.ip ?? null,
+      rssi: rssi ?? prior?.rssi ?? null,
+      uptime: uptime ?? prior?.uptime ?? null,
+      freeHeap: freeHeap ?? prior?.freeHeap ?? null,
+      firmwareVersion: firmwareVersion || prior?.firmwareVersion || null,
     },
   });
 }
