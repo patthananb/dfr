@@ -47,6 +47,28 @@ This directory contains the Arduino core firmware for the DFR (Data Fault Record
 - **Version Control**: Increment `FW_VERSION` in `config.h` for every release.
 - **Rollback**: The server supports rollback; ensure the client correctly identifies the `forceUpdate` flag to allow downgrades if necessary.
 
+## Critical Implementation Requirements
+
+To ensure OTA updates and core functionality (heartbeats, ADC sampling) remain operational, the following base code patterns **must** be maintained in any firmware revision:
+
+### 1. WiFi & Network Stability
+- **Non-blocking Loop**: The `loop()` function must never block for extended periods. Use `millis()`-based timing for tasks.
+- **Connection Maintenance**: `connectWiFi()` or an equivalent must be called in `loop()` to ensure the device reconnects if the signal is lost.
+- **Yielding**: Call `delay(1)` or `yield()` in long-running loops to prevent Watchdog Timer (WDT) resets and allow the background WiFi stack to process.
+
+### 2. OTA Update Chain
+- **Manifest Verification**: The `verifySignature()` function must be called before any update. It validates the HMAC-SHA256 signature of the `version:sha256:filename` payload.
+- **On-the-fly Hash Check**: During `performOta()`, the SHA-256 hash must be computed as the stream is written to flash and verified against the expected hash from the manifest.
+- **Force Update Support**: The client must respect the `forceUpdate` flag from the server to allow for critical rollbacks or mandatory updates even if `AUTO_UPDATE` is disabled.
+
+### 3. Heartbeats & Identity
+- **Device ID**: Use the MAC-address-based `resolveDeviceId()` to ensure unique identification in the DFR dashboard.
+- **Status Reporting**: Periodic heartbeats to `/api/status` are mandatory for the device to appear "Online". They must include `rssi`, `uptime`, `freeHeap`, and the current `FW_VERSION`.
+
+### 4. ADC Timing
+- **Hardware Timer**: ADC sampling **must** remain interrupt-driven via `hw_timer_t`. Manual sampling in the `loop()` will lead to jitter and broken waveform visualizations on the dashboard.
+- **Buffer Management**: Use the `volatile` flag for the capture buffer and completion flags to ensure thread-safe communication between the ISR and the main loop.
+
 ## Logging & Debugging
 
 - Use `Serial.printf()` for structured logging.
