@@ -22,7 +22,7 @@ This project ingests JSON sensor data and visualizes it with Chart.js.
   - `data/` – runtime storage for JSON files.
 - `src/lib/crypto.js` – HMAC-SHA256 sign/verify helpers for firmware manifests.
 - `src/components/Navbar.jsx` – links to Home, Graph, and Firmware pages.
-- `esp32/` – Arduino core sketch for ESP32 OTA firmware client.
+- `esp32/` – Arduino core sketch for ESP32 OTA firmware client. See `esp32/README.md` for coding guidelines.
 - `send-dummy-data.sh` – helper script to generate synthetic JSON for testing.
 - `firmware/` – storage for uploaded firmware binaries.
 

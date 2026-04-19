@@ -118,7 +118,7 @@ Every firmware manifest entry is signed with HMAC-SHA256 using `FIRMWARE_HMAC_SE
 
 ### ESP32 client
 
-The Arduino sketch in `esp32/` connects to the server, sends periodic heartbeats to `/api/status`, checks for OTA updates via `/api/firmware/check`, downloads and HMAC-verifies the binary, then flashes using the Arduino `Update` library.
+The Arduino sketch in `esp32/` connects to the server, sends periodic heartbeats to `/api/status`, checks for OTA updates via `/api/firmware/check`, downloads and HMAC-verifies the binary, then flashes using the Arduino `Update` library. See `esp32/README.md` for coding guidelines.
 
 ADC sampling uses a hardware timer interrupt for precise timing. Configuration in `config.h`:
 - 8 channels (V1-V3, I1-I3, A, B) on GPIO 32-39 (ADC1) and 25-26 (ADC2)
