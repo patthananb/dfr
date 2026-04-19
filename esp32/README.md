@@ -69,6 +69,56 @@ To ensure OTA updates and core functionality (heartbeats, ADC sampling) remain o
 - **Hardware Timer**: ADC sampling **must** remain interrupt-driven via `hw_timer_t`. Manual sampling in the `loop()` will lead to jitter and broken waveform visualizations on the dashboard.
 - **Buffer Management**: Use the `volatile` flag for the capture buffer and completion flags to ensure thread-safe communication between the ISR and the main loop.
 
+## Example Code Snippets
+
+### Non-blocking Loop & Timing
+```cpp
+void loop() {
+  connectWiFi(); // Ensure connection
+  unsigned long now = millis();
+
+  if (now - lastHeartbeat >= HEARTBEAT_INTERVAL_MS) {
+    sendHeartbeat();
+    lastHeartbeat = now;
+  }
+  
+  if (now - lastOtaCheck >= OTA_CHECK_INTERVAL_MS) {
+    checkForUpdate();
+    lastOtaCheck = now;
+  }
+
+  yield(); // Allow background tasks
+}
+```
+
+### Hardware Timer ADC Sampling (ISR)
+```cpp
+void IRAM_ATTR onAdcTimer() {
+  if (!adcCapturing || adcCaptureComplete) return;
+
+  uint16_t idx = adcSampleIndex;
+  if (idx >= ADC_SAMPLES) {
+    adcCaptureComplete = true;
+    adcCapturing = false;
+    return;
+  }
+
+  adcBuffer[idx][0] = analogRead(ADC_PIN_V1);
+  // ... read other pins
+  adcSampleIndex = idx + 1;
+}
+```
+
+### HMAC Signature Verification
+```cpp
+bool verifySignature(const String &version, const String &sha256,
+                     const String &filename, const String &signature) {
+  String payload = version + ":" + sha256 + ":" + filename;
+  String computed = hmacSha256(HMAC_SECRET, payload);
+  return computed.equalsIgnoreCase(signature);
+}
+```
+
 ## Logging & Debugging
 
 - Use `Serial.printf()` for structured logging.
