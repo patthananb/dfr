@@ -47,11 +47,12 @@ CREATE TABLE "Fault" (
 CREATE TABLE "FirmwareVersion" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "espId" TEXT NOT NULL,
-    "version" TEXT NOT NULL,
+    "filename" TEXT NOT NULL,
+    "version" TEXT,
     "sha256" TEXT NOT NULL,
     "hmacSignature" TEXT NOT NULL,
     "sizeBytes" INTEGER NOT NULL,
-    "binaryPath" TEXT NOT NULL,
+    "releaseNotes" TEXT,
     "isActive" BOOLEAN NOT NULL DEFAULT false,
     "uploadedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "FirmwareVersion_espId_fkey" FOREIGN KEY ("espId") REFERENCES "Device" ("espId") ON DELETE CASCADE ON UPDATE CASCADE
@@ -88,7 +89,7 @@ CREATE INDEX "Fault_faultType_recordedAt_idx" ON "Fault"("faultType", "recordedA
 CREATE INDEX "FirmwareVersion_espId_isActive_idx" ON "FirmwareVersion"("espId", "isActive");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "FirmwareVersion_espId_version_key" ON "FirmwareVersion"("espId", "version");
+CREATE UNIQUE INDEX "FirmwareVersion_espId_filename_key" ON "FirmwareVersion"("espId", "filename");
 
 -- CreateIndex
 CREATE INDEX "ForceUpdate_espId_idx" ON "ForceUpdate"("espId");

@@ -1,17 +1,30 @@
 import { NextResponse } from "next/server";
-import { randomUUID } from "crypto";
-import { readSites, sanitizeSites, writeSites } from "@/lib/sites";
+import {
+  listSites,
+  createSite,
+  updateSite,
+  deleteSite,
+  sanitizeSites,
+} from "@/lib/repos/sites";
+
+function parseDevices(raw) {
+  return Array.isArray(raw)
+    ? raw
+        .map((device) => ({
+          id: typeof device.id === "string" ? device.id.trim() : "",
+          mac: typeof device.mac === "string" ? device.mac.trim() : "",
+        }))
+        .filter((d) => d.id && d.mac)
+    : [];
+}
 
 export async function GET() {
   try {
-    const sites = await readSites();
+    const sites = await listSites();
     return NextResponse.json({ sites: sanitizeSites(sites) });
   } catch (error) {
     console.error(error);
-    return NextResponse.json(
-      { error: "Failed to load sites" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to load sites" }, { status: 500 });
   }
 }
 
@@ -19,21 +32,11 @@ export async function POST(request) {
   try {
     const body = await request.json();
     const name = typeof body.name === "string" ? body.name.trim() : "";
-    const wifiSsid =
-      typeof body.wifi?.ssid === "string" ? body.wifi.ssid.trim() : "";
-    const wifiPassword =
-      typeof body.wifi?.password === "string" ? body.wifi.password : "";
+    const ssid = typeof body.wifi?.ssid === "string" ? body.wifi.ssid.trim() : "";
+    const password = typeof body.wifi?.password === "string" ? body.wifi.password : "";
+    const devices = parseDevices(body.devices);
 
-    const devices = Array.isArray(body.devices)
-      ? body.devices
-          .map((device) => ({
-            id: typeof device.id === "string" ? device.id.trim() : "",
-            mac: typeof device.mac === "string" ? device.mac.trim() : "",
-          }))
-          .filter((device) => device.id && device.mac)
-      : [];
-
-    if (!name || !wifiSsid || devices.length === 0) {
+    if (!name || !ssid || devices.length === 0) {
       return NextResponse.json(
         {
           error:
@@ -43,51 +46,25 @@ export async function POST(request) {
       );
     }
 
-    const sites = await readSites();
-    const newSite = {
-      id: randomUUID(),
-      name,
-      createdAt: new Date().toISOString(),
-      wifi: {
-        ssid: wifiSsid,
-        password: wifiPassword,
-      },
-      devices,
-    };
-
-    const updatedSites = [...sites, newSite];
-    await writeSites(updatedSites);
-
-    return NextResponse.json({ sites: sanitizeSites(updatedSites) });
+    await createSite({ name, wifi: { ssid, password }, devices });
+    const sites = await listSites();
+    return NextResponse.json({ sites: sanitizeSites(sites) });
   } catch (error) {
     console.error(error);
-    return NextResponse.json(
-      { error: "Failed to save site" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to save site" }, { status: 500 });
   }
 }
 
 export async function PUT(request) {
   try {
     const body = await request.json();
-    const siteId = typeof body.id === "string" ? body.id.trim() : "";
+    const id = typeof body.id === "string" ? body.id.trim() : "";
     const name = typeof body.name === "string" ? body.name.trim() : "";
-    const wifiSsid =
-      typeof body.wifi?.ssid === "string" ? body.wifi.ssid.trim() : "";
-    const wifiPassword =
-      typeof body.wifi?.password === "string" ? body.wifi.password : "";
+    const ssid = typeof body.wifi?.ssid === "string" ? body.wifi.ssid.trim() : "";
+    const password = typeof body.wifi?.password === "string" ? body.wifi.password : "";
+    const devices = parseDevices(body.devices);
 
-    const devices = Array.isArray(body.devices)
-      ? body.devices
-          .map((device) => ({
-            id: typeof device.id === "string" ? device.id.trim() : "",
-            mac: typeof device.mac === "string" ? device.mac.trim() : "",
-          }))
-          .filter((device) => device.id && device.mac)
-      : [];
-
-    if (!siteId || !name || !wifiSsid || devices.length === 0) {
+    if (!id || !name || !ssid || devices.length === 0) {
       return NextResponse.json(
         {
           error:
@@ -97,58 +74,34 @@ export async function PUT(request) {
       );
     }
 
-    const sites = await readSites();
-    const siteIndex = sites.findIndex((site) => site.id === siteId);
-    if (siteIndex === -1) {
+    const updated = await updateSite(id, { name, wifi: { ssid, password }, devices });
+    if (!updated) {
       return NextResponse.json({ error: "Site not found" }, { status: 404 });
     }
-
-    const existing = sites[siteIndex];
-    const updatedSite = {
-      ...existing,
-      name,
-      wifi: {
-        ssid: wifiSsid,
-        password: wifiPassword.length > 0 ? wifiPassword : existing.wifi?.password,
-      },
-      devices,
-    };
-
-    const updatedSites = [...sites];
-    updatedSites[siteIndex] = updatedSite;
-    await writeSites(updatedSites);
-
-    return NextResponse.json({ sites: sanitizeSites(updatedSites) });
+    const sites = await listSites();
+    return NextResponse.json({ sites: sanitizeSites(sites) });
   } catch (error) {
     console.error(error);
-    return NextResponse.json(
-      { error: "Failed to update site" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to update site" }, { status: 500 });
   }
 }
 
 export async function DELETE(request) {
   try {
     const { searchParams } = new URL(request.url);
-    const siteId = searchParams.get("id");
-    if (!siteId) {
+    const id = searchParams.get("id");
+    if (!id) {
       return NextResponse.json({ error: "Site ID is required" }, { status: 400 });
     }
 
-    const sites = await readSites();
-    const updatedSites = sites.filter((site) => site.id !== siteId);
-    if (updatedSites.length === sites.length) {
+    const removed = await deleteSite(id);
+    if (!removed) {
       return NextResponse.json({ error: "Site not found" }, { status: 404 });
     }
-
-    await writeSites(updatedSites);
-    return NextResponse.json({ sites: sanitizeSites(updatedSites) });
+    const sites = await listSites();
+    return NextResponse.json({ sites: sanitizeSites(sites) });
   } catch (error) {
     console.error(error);
-    return NextResponse.json(
-      { error: "Failed to remove site" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to remove site" }, { status: 500 });
   }
 }

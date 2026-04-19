@@ -79,17 +79,18 @@ model Fault {
 model FirmwareVersion {
   id            Int      @id @default(autoincrement())
   espId         String
-  version       String
+  filename      String   // on-disk name under firmware/{espId}/{filename}
+  version       String?  // vendor/display version; can be absent on legacy uploads
   sha256        String
   hmacSignature String
   sizeBytes     Int
-  binaryPath    String   // filesystem path under firmware/{espId}/
+  releaseNotes  String?
   isActive      Boolean  @default(false)
   uploadedAt    DateTime @default(now())
 
   device Device @relation(fields: [espId], references: [espId], onDelete: Cascade)
 
-  @@unique([espId, version])
+  @@unique([espId, filename])
   @@index([espId, isActive])
 }
 

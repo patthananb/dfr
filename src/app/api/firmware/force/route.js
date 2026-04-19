@@ -1,14 +1,9 @@
 import { NextResponse } from "next/server";
-import { join } from "path";
 import { isSafePathSegment } from "@/lib/validate";
-import { readJSON, updateJSON } from "@/lib/json-store";
-import { readSites, getAllDeviceIds } from "@/lib/sites";
-
-const DATA_DIR = join(process.cwd(), "data");
-const FORCE_FILE = join(DATA_DIR, "force-updates.json");
+import { addFlags, listFlags } from "@/lib/repos/force-updates";
+import { listSites, getAllDeviceIds } from "@/lib/repos/sites";
 
 // POST /api/firmware/force  { espId } | { siteId } | { all: true }
-// Sets force update flag for targeted devices
 export async function POST(request) {
   try {
     const body = await request.json();
@@ -16,10 +11,10 @@ export async function POST(request) {
     let targetIds = [];
 
     if (body.all) {
-      const sites = await readSites();
+      const sites = await listSites();
       targetIds = getAllDeviceIds(sites);
     } else if (body.siteId) {
-      const sites = await readSites();
+      const sites = await listSites();
       const site = sites.find((s) => s.id === body.siteId);
       if (!site) {
         return NextResponse.json({ error: "Site not found" }, { status: 404 });
@@ -37,13 +32,7 @@ export async function POST(request) {
       );
     }
 
-    await updateJSON(FORCE_FILE, (flags) => {
-      for (const id of targetIds) {
-        flags[id] = { flaggedAt: new Date().toISOString() };
-      }
-      return flags;
-    });
-
+    await addFlags(targetIds);
     return NextResponse.json({ success: true, flagged: targetIds });
   } catch (err) {
     console.error(err);
@@ -51,10 +40,9 @@ export async function POST(request) {
   }
 }
 
-// GET /api/firmware/force — list current force update flags
 export async function GET() {
   try {
-    const flags = await readJSON(FORCE_FILE);
+    const flags = await listFlags();
     return NextResponse.json({ flags });
   } catch (err) {
     console.error(err);

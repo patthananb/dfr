@@ -1,15 +1,11 @@
 import { NextResponse } from "next/server";
-import { join } from "path";
 import { isSafePathSegment } from "@/lib/validate";
-import { readJSON, updateJSON } from "@/lib/json-store";
-import { readManifest } from "@/lib/firmware";
-
-const DATA_DIR = join(process.cwd(), "data");
-const HEARTBEAT_FILE = join(DATA_DIR, "heartbeat.json");
-const FORCE_FILE = join(DATA_DIR, "force-updates.json");
+import { readManifest } from "@/lib/repos/firmware";
+import { recordHeartbeat } from "@/lib/repos/status";
+import { isFlagged, clearFlag } from "@/lib/repos/force-updates";
 
 // GET /api/firmware/check?espId=...&currentVersion=...
-// OTA check-in endpoint for ESP32 devices
+// OTA check-in endpoint for ESP32 devices.
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -24,17 +20,8 @@ export async function GET(request) {
       return NextResponse.json({ error: "Invalid ESP32 ID" }, { status: 400 });
     }
 
-    // Record heartbeat atomically
-    await updateJSON(HEARTBEAT_FILE, (heartbeat) => {
-      heartbeat[espId] = {
-        ...heartbeat[espId],
-        lastSeen: new Date().toISOString(),
-        firmwareVersion: currentVersion || heartbeat[espId]?.firmwareVersion,
-      };
-      return heartbeat;
-    });
+    await recordHeartbeat(espId, { firmwareVersion: currentVersion });
 
-    // Read manifest
     const manifest = await readManifest(espId);
     if (!manifest.active || manifest.versions.length === 0) {
       return NextResponse.json({ update: false });
@@ -45,21 +32,14 @@ export async function GET(request) {
       return NextResponse.json({ update: false });
     }
 
-    // If current version matches active firmware version, no update needed
-    // (unless force update is flagged)
-    const forceFlags = await readJSON(FORCE_FILE);
-    const isForced = !!forceFlags[espId];
+    const forced = await isFlagged(espId);
 
-    if (activeEntry.version === currentVersion && !isForced) {
+    if (activeEntry.version === currentVersion && !forced) {
       return NextResponse.json({ update: false });
     }
 
-    // Clear force flag after acknowledging (atomically)
-    if (isForced) {
-      await updateJSON(FORCE_FILE, (flags) => {
-        delete flags[espId];
-        return flags;
-      });
+    if (forced) {
+      await clearFlag(espId);
     }
 
     return NextResponse.json({
@@ -69,7 +49,7 @@ export async function GET(request) {
       sha256: activeEntry.sha256,
       signature: activeEntry.signature || null,
       releaseNotes: activeEntry.releaseNotes || "",
-      forceUpdate: isForced,
+      forceUpdate: forced,
       url: `/api/firmware/latest?espId=${encodeURIComponent(espId)}`,
     });
   } catch (err) {
