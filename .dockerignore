@@ -1,0 +1,40 @@
+# Trim build context — keeps `docker build` fast and avoids leaking local state.
+**/node_modules
+**/.next
+**/.turbo
+**/.cache
+**/out
+**/build
+**/coverage
+
+# VCS + editor cruft
+.git
+.gitignore
+.gitattributes
+.github
+.vscode
+.idea
+**/.DS_Store
+
+# env & secrets (image reads DATABASE_URL etc. from compose, not the build)
+.env
+.env.*
+!.env.example
+
+# runtime data that belongs in a volume, not the image
+/data/*
+!/data/.gitkeep
+/firmware/*
+!/firmware/.gitkeep
+
+# docs & local tooling
+*.md
+!README.md
+send-dummy-data.sh
+esp32
+
+# never ship the already-built dev sqlite
+**/*.db
+**/*.db-journal
+**/*.db-wal
+**/*.db-shm

@@ -43,3 +43,9 @@ next-env.d.ts
 # firmware uploads
 /firmware/*
 !/firmware/.gitkeep
+
+# sqlite dev database (lives in /data so docker volume mounts pick it up)
+/data/*.db
+/data/*.db-journal
+/data/*.db-wal
+/data/*.db-shm

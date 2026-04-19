@@ -1,0 +1,109 @@
+// DFR database schema.
+//
+// SQLite is used by default to avoid extra infra — flip the `provider` and
+// `DATABASE_URL` to switch to Postgres without touching the models (the Docker
+// compose file has a commented-out `db` service for that path).
+//
+// Binary firmware blobs stay on disk under /firmware/{espId}/; only metadata
+// lives here. Waveform payloads are kept as JSON (stored as TEXT on SQLite,
+// JSONB on Postgres) — see plan §3 for the rationale.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Site {
+  id           String   @id
+  name         String
+  location     String?
+  ssid         String?
+  passwordEnc  String?  // encrypted at rest; was plaintext in sites.json
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  devices      Device[]
+  forceUpdates ForceUpdate[]
+}
+
+model Device {
+  espId     String   @id
+  siteId    String?
+  label     String?
+  createdAt DateTime @default(now())
+
+  site              Site?              @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  heartbeats        Heartbeat[]
+  faults            Fault[]
+  firmwareVersions  FirmwareVersion[]
+  forceUpdates      ForceUpdate[]
+
+  @@index([siteId])
+}
+
+model Heartbeat {
+  id              Int      @id @default(autoincrement())
+  espId           String
+  ts              DateTime @default(now())
+  ip              String?
+  rssi            Int?
+  firmwareVersion String?
+
+  device Device @relation(fields: [espId], references: [espId], onDelete: Cascade)
+
+  @@index([espId, ts])
+}
+
+model Fault {
+  id             Int      @id @default(autoincrement())
+  faultType      String
+  faultLocation  String
+  espId          String?
+  recordedAt     DateTime
+  sampleRateHz   Int?
+  sampleCount    Int?
+  sourceFilename String?  // for back-compat during migration
+  payload        String   // JSON blob of the samples array (JSONB on Postgres)
+
+  device Device? @relation(fields: [espId], references: [espId], onDelete: SetNull)
+
+  @@index([recordedAt])
+  @@index([espId, recordedAt])
+  @@index([faultType, recordedAt])
+}
+
+model FirmwareVersion {
+  id            Int      @id @default(autoincrement())
+  espId         String
+  version       String
+  sha256        String
+  hmacSignature String
+  sizeBytes     Int
+  binaryPath    String   // filesystem path under firmware/{espId}/
+  isActive      Boolean  @default(false)
+  uploadedAt    DateTime @default(now())
+
+  device Device @relation(fields: [espId], references: [espId], onDelete: Cascade)
+
+  @@unique([espId, version])
+  @@index([espId, isActive])
+}
+
+model ForceUpdate {
+  id            Int      @id @default(autoincrement())
+  espId         String?  // null => applies at site or global scope
+  siteId        String?  // null => applies at device or global scope
+  versionTarget String?
+  createdAt     DateTime @default(now())
+  expiresAt     DateTime?
+
+  device Device? @relation(fields: [espId], references: [espId], onDelete: Cascade)
+  site   Site?   @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@index([espId])
+  @@index([siteId])
+}

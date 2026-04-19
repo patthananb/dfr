@@ -1,0 +1,60 @@
+# DFR deployment compose file.
+#
+# Default setup runs a single `web` container backed by SQLite in a named
+# volume. The commented-out `db` service shows the path to Postgres if/when
+# horizontal scaling is needed (just flip provider in prisma/schema.prisma and
+# swap DATABASE_URL below to the postgres:// form).
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: dfr:latest
+    restart: unless-stopped
+    ports:
+      - "${DFR_PORT:-3000}:3000"
+    environment:
+      NODE_ENV: production
+      # SQLite lives inside the /app/data volume so migrations persist across
+      # redeploys. Swap to postgres://... and uncomment the db service below to
+      # move to Postgres without any code changes.
+      DATABASE_URL: "file:/app/data/dfr.db"
+      FIRMWARE_HMAC_SECRET: "${FIRMWARE_HMAC_SECRET:?FIRMWARE_HMAC_SECRET must be set}"
+    volumes:
+      - dfr-data:/app/data
+      - dfr-firmware:/app/firmware
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    # Uncomment when running the db service below:
+    # depends_on:
+    #   db:
+    #     condition: service_healthy
+
+  # --- Postgres path (opt-in) -----------------------------------------------
+  # Uncomment this service AND change prisma/schema.prisma `provider` to
+  # "postgresql" AND set DATABASE_URL on web to the postgres URL below.
+  #
+  # db:
+  #   image: postgres:16-alpine
+  #   restart: unless-stopped
+  #   environment:
+  #     POSTGRES_USER: dfr
+  #     POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}"
+  #     POSTGRES_DB: dfr
+  #   volumes:
+  #     - dfr-pg:/var/lib/postgresql/data
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U dfr -d dfr"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+
+volumes:
+  dfr-data:
+  dfr-firmware:
+  # dfr-pg:
