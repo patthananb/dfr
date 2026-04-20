@@ -53,6 +53,68 @@ npm run db:migrate-data   # One-shot import from existing JSON files into the DB
 
 The migration importer reads `data/sites.json`, `data/heartbeat.json`, `data/force-updates.json`, `data/*.json` fault recordings, and `firmware/{espId}/manifest.json`. It is idempotent — use `--dry-run` to preview and `--wipe` to truncate before re-running.
 
+### Database Schema
+
+The system uses the following relational model (managed via Prisma):
+
+#### `Site`
+Groups devices by physical location and stores shared credentials.
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | String (PK) | Unique site identifier |
+| `name` | String | Display name (e.g., "Substation A") |
+| `location` | String? | Optional physical address or coordinates |
+| `ssid` | String? | WiFi network name for the site |
+| `passwordEnc` | String? | AES-256 encrypted WiFi password |
+
+#### `Device`
+Represents an individual ESP32 unit.
+| Field | Type | Description |
+|-------|------|-------------|
+| `espId` | String (PK) | Device ID (usually `esp32-{MAC}`) |
+| `siteId` | String? (FK) | Reference to the parent `Site` |
+| `label` | String? | Friendly name for the device |
+
+#### `Heartbeat`
+Time-series status updates recorded every 60s.
+| Field | Type | Description |
+|-------|------|-------------|
+| `espId` | String (FK) | Reference to the reporting `Device` |
+| `ts` | DateTime | Arrival timestamp |
+| `ip` | String? | Local IP address |
+| `rssi` | Int? | Signal strength (dBm) |
+| `uptime` | Int? | Seconds since last boot |
+| `freeHeap` | Int? | Available RAM (bytes) |
+| `firmwareVersion` | String? | Currently running firmware version |
+
+#### `Fault`
+Electrical event recordings containing waveform samples.
+| Field | Type | Description |
+|-------|------|-------------|
+| `faultType` | String | Category (e.g., `line_to_ground`, `three_phase`) |
+| `faultLocation` | String | Feeder or phase identifier |
+| `espId` | String? (FK) | Device that recorded the fault |
+| `recordedAt` | DateTime | Timestamp of the event |
+| `payload` | JSON/String | Array of ADC samples (V1-V3, I1-I3, A, B) |
+
+#### `FirmwareVersion`
+Metadata for binary blobs stored on disk.
+| Field | Type | Description |
+|-------|------|-------------|
+| `espId` | String (FK) | Device this binary is built for |
+| `version` | String? | Semantic version (e.g., `1.2.0`) |
+| `sha256` | String | SHA-256 hash of the binary |
+| `hmacSignature` | String | HMAC-SHA256 signature for OTA verification |
+| `isActive` | Boolean | Whether this is the current target version |
+
+#### `ForceUpdate`
+Admin flags to trigger immediate OTA check-ins.
+| Field | Type | Description |
+|-------|------|-------------|
+| `espId` | String? (FK) | Specific device target |
+| `siteId` | String? (FK) | All devices at a specific site |
+| `versionTarget` | String? | Optional version to force |
+
 ### Running
 
 ```bash
