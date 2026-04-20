@@ -2,29 +2,34 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
+import {
+  Badge,
+  Button,
+  Dot,
+  Field,
+  Icon,
+  Kicker,
+  Metric,
+  Panel,
+  Toast,
+  formatLabel,
+  formatRelTime,
+  formatUptime,
+} from "@/components/ui";
 
+const TARGET_FW = "1.4.2";
 const emptyDevice = { id: "", mac: "" };
-
-function formatLastSeen(value) {
-  if (!value) {
-    return "No heartbeat yet";
-  }
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return "Invalid timestamp";
-  }
-  return `Last seen ${date.toLocaleString()}`;
-}
 
 export default function SiteDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const siteId = params?.id;
+
   const [site, setSite] = useState(null);
   const [statuses, setStatuses] = useState({});
   const [faults, setFaults] = useState([]);
-  const [message, setMessage] = useState("");
-  const [editMode, setEditMode] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState({
     name: "",
     wifiSsid: "",
@@ -32,124 +37,101 @@ export default function SiteDetailPage() {
     devices: [{ ...emptyDevice }],
     hasPassword: false,
   });
-  const [editMessage, setEditMessage] = useState("");
+  const [toast, setToast] = useState(null);
+  const [loadError, setLoadError] = useState("");
 
   const loadSite = async () => {
     try {
       const res = await fetch("/api/sites");
-      if (!res.ok) {
-        throw new Error("Failed to load sites");
-      }
+      if (!res.ok) throw new Error("Failed to load sites");
       const data = await res.json();
       const sites = Array.isArray(data.sites) ? data.sites : [];
-      const found = sites.find((entry) => entry.id === siteId);
-      setSite(found || null);
+      const found = sites.find((s) => s.id === siteId);
       if (!found) {
-        setMessage("Site not found.");
+        setLoadError("Site not found.");
+        setSite(null);
         return;
       }
+      setLoadError("");
+      setSite(found);
       setEditForm({
         name: found.name || "",
         wifiSsid: found.wifi?.ssid || "",
         wifiPassword: "",
-        devices: found.devices?.length
-          ? found.devices.map((device) => ({ ...device }))
-          : [{ ...emptyDevice }],
-        hasPassword: found.wifi?.hasPassword || false,
+        devices: found.devices?.length ? found.devices.map((d) => ({ ...d })) : [{ ...emptyDevice }],
+        hasPassword: !!found.wifi?.hasPassword,
       });
-    } catch (error) {
-      console.error(error);
-      setMessage("Unable to load site.");
+    } catch (err) {
+      console.error(err);
+      setLoadError("Unable to load site.");
     }
   };
 
-  const loadStatus = async () => {
+  const loadStatuses = async () => {
     try {
       const res = await fetch("/api/status");
-      if (!res.ok) {
-        throw new Error("Failed to load status");
-      }
+      if (!res.ok) return;
       const data = await res.json();
       setStatuses(data.statuses || {});
-    } catch (error) {
-      console.error(error);
-    }
+    } catch { /* ignore */ }
   };
 
   const loadFaults = async (siteName) => {
     try {
       const res = await fetch(`/api/faults?site=${encodeURIComponent(siteName)}`);
-      if (!res.ok) {
-        throw new Error("Failed to load faults");
-      }
+      if (!res.ok) return;
       const data = await res.json();
       setFaults(Array.isArray(data.faults) ? data.faults : []);
-    } catch (error) {
-      console.error(error);
-    }
+    } catch { /* ignore */ }
   };
 
   useEffect(() => {
     if (!siteId) return;
     loadSite();
-    loadStatus();
-    const interval = setInterval(loadStatus, 15000);
-    return () => clearInterval(interval);
+    loadStatuses();
+    const t = setInterval(loadStatuses, 15000);
+    return () => clearInterval(t);
   }, [siteId]);
 
   useEffect(() => {
-    if (site?.name) {
-      loadFaults(site.name);
-    }
+    if (site?.name) loadFaults(site.name);
   }, [site?.name]);
 
-  const deviceStatuses = useMemo(() => {
+  const devices = useMemo(() => {
     if (!site) return [];
-    return (site.devices || []).map((device) => ({
-      ...device,
-      status: statuses[device.id] || {},
-    }));
+    return (site.devices || []).map((d) => ({ ...d, status: statuses[d.id] || {} }));
   }, [site, statuses]);
 
-  const updateEditDeviceField = (index, field, value) => {
+  const online = devices.filter((d) => d.status.online).length;
+  const onTarget = devices.filter((d) => d.status.firmwareVersion === TARGET_FW).length;
+  const avgRssi = devices.length
+    ? Math.round(devices.reduce((a, d) => a + (d.status.rssi || 0), 0) / devices.length)
+    : 0;
+
+  const updateDeviceField = (index, field, value) => {
     setEditForm((prev) => ({
       ...prev,
-      devices: prev.devices.map((device, idx) =>
-        idx === index ? { ...device, [field]: value } : device
-      ),
+      devices: prev.devices.map((d, i) => (i === index ? { ...d, [field]: value } : d)),
     }));
   };
 
-  const addEditDeviceRow = () => {
-    setEditForm((prev) => ({
-      ...prev,
-      devices: [...prev.devices, { ...emptyDevice }],
-    }));
-  };
+  const addDeviceRow = () =>
+    setEditForm((prev) => ({ ...prev, devices: [...prev.devices, { ...emptyDevice }] }));
 
-  const removeEditDeviceRow = (index) => {
-    setEditForm((prev) => ({
-      ...prev,
-      devices: prev.devices.filter((_, idx) => idx !== index),
-    }));
-  };
+  const removeDeviceRow = (index) =>
+    setEditForm((prev) => ({ ...prev, devices: prev.devices.filter((_, i) => i !== index) }));
 
-  const handleEditSave = async () => {
-    setEditMessage("");
-    const cleanedDevices = editForm.devices
-      .map((device) => ({
-        id: device.id.trim(),
-        mac: device.mac.trim(),
-      }))
-      .filter((device) => device.id && device.mac);
+  const handleSave = async () => {
+    const cleaned = editForm.devices
+      .map((d) => ({ id: d.id.trim(), mac: d.mac.trim() }))
+      .filter((d) => d.id && d.mac);
 
     if (!editForm.name.trim() || !editForm.wifiSsid.trim()) {
-      setEditMessage("Site name and WiFi SSID are required.");
+      setToast({ message: "Site name and WiFi SSID are required", tone: "error" });
       return;
     }
-
-    if (cleanedDevices.length === 0) {
-      setEditMessage("Add at least one ESP32 ID and MAC address.");
+    if (cleaned.length === 0) {
+      setToast({ message: "Add at least one ESP32 device", tone: "error" });
       return;
     }
 
@@ -161,266 +143,245 @@ export default function SiteDetailPage() {
           id: siteId,
           name: editForm.name,
           wifi: { ssid: editForm.wifiSsid, password: editForm.wifiPassword },
-          devices: cleanedDevices,
+          devices: cleaned,
         }),
       });
-
       if (!res.ok) {
-        const errorBody = await res.json();
-        throw new Error(errorBody.error || "Failed to update site");
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to update site");
       }
-
       const data = await res.json();
       const sites = Array.isArray(data.sites) ? data.sites : [];
-      const updated = sites.find((entry) => entry.id === siteId) || null;
+      const updated = sites.find((s) => s.id === siteId) || null;
       setSite(updated);
-      setEditMode(false);
-      setEditMessage("");
-      loadStatus();
-    } catch (error) {
-      console.error(error);
-      setEditMessage(error.message || "Unable to update site.");
+      setEditing(false);
+      setToast({ message: "Site updated", tone: "success" });
+      loadStatuses();
+    } catch (err) {
+      setToast({ message: err.message || "Unable to update site", tone: "error" });
+    }
+  };
+
+  const handleRemove = async () => {
+    if (!site) return;
+    if (!window.confirm(`Remove ${site.name}? This cannot be undone.`)) return;
+    try {
+      const res = await fetch(`/api/sites?id=${siteId}`, { method: "DELETE" });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to remove site");
+      }
+      router.push("/sites");
+    } catch (err) {
+      setToast({ message: err.message || "Unable to remove site", tone: "error" });
     }
   };
 
   if (!site) {
     return (
-      <div className="flex flex-col items-center justify-center flex-1 p-4 text-gray-100">
-        <div className="w-full max-w-3xl space-y-4">
-          <div className="rounded-2xl border border-slate-700 bg-slate-900/60 p-6 text-center text-sm text-gray-400">
-            {message || "Loading site details..."}
-          </div>
-          <Link href="/sites" className="text-cyan-300 hover:text-cyan-200 underline text-sm">
-            Back to Sites
+      <div className="main-inner col" style={{ gap: 16 }}>
+        <div className="row" style={{ gap: 12, color: "var(--muted)", fontSize: 11 }}>
+          <Link href="/sites" style={{ color: "var(--accent)" }}>
+            <Icon name="back" size={11} /> Sites
           </Link>
         </div>
+        <Panel>
+          <div className="empty">{loadError || "Loading site…"}</div>
+        </Panel>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col items-center justify-center flex-1 p-4 text-gray-100">
-      <div className="w-full max-w-5xl space-y-8">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-xs text-gray-500">Site Details</p>
-            <h1 className="text-3xl font-bold text-gray-100">{site.name}</h1>
-            <p className="text-xs text-gray-500">
-              WiFi SSID: {site.wifi?.ssid || "Not set"}
-            </p>
-          </div>
-          <div className="flex gap-3">
-            <Link
-              href="/sites"
-              className="text-xs text-gray-400 hover:text-gray-200 underline"
-            >
-              Back to Sites
-            </Link>
-            <button
-              type="button"
-              onClick={() => setEditMode((prev) => !prev)}
-              className="rounded-full border border-slate-700 px-4 py-2 text-xs text-cyan-300 hover:text-cyan-200 hover:border-cyan-400/60"
-            >
-              {editMode ? "Close Edit" : "Edit Site"}
-            </button>
+    <div className="main-inner col" style={{ gap: 20 }}>
+      <div className="row" style={{ gap: 12, color: "var(--muted)", fontSize: 11 }}>
+        <Link href="/sites" style={{ color: "var(--accent)" }}>
+          <Icon name="back" size={11} /> Sites
+        </Link>
+        <span>/</span>
+        <span>{site.name}</span>
+      </div>
+
+      <div className="row between">
+        <div>
+          <Kicker>Site</Kicker>
+          <div className="t-h1" style={{ marginTop: 4 }}>{site.name}</div>
+          <div className="t-mono-xs t-mute" style={{ marginTop: 2 }}>
+            SSID <span className="code">{site.wifi?.ssid || "—"}</span> · {devices.length} devices · {online} online
           </div>
         </div>
-
-        {editMode && (
-          <div className="rounded-2xl border border-slate-700/60 bg-slate-900/50 p-6 space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs text-gray-400">Site Name</label>
-                <input
-                  type="text"
-                  value={editForm.name}
-                  onChange={(event) =>
-                    setEditForm((prev) => ({
-                      ...prev,
-                      name: event.target.value,
-                    }))
-                  }
-                  className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-800/60 px-3 py-2 text-sm text-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-500/60"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-gray-400">WiFi SSID</label>
-                <input
-                  type="text"
-                  value={editForm.wifiSsid}
-                  onChange={(event) =>
-                    setEditForm((prev) => ({
-                      ...prev,
-                      wifiSsid: event.target.value,
-                    }))
-                  }
-                  className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-800/60 px-3 py-2 text-sm text-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-500/60"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-gray-400">WiFi Password</label>
-                <input
-                  type="password"
-                  value={editForm.wifiPassword}
-                  onChange={(event) =>
-                    setEditForm((prev) => ({
-                      ...prev,
-                      wifiPassword: event.target.value,
-                    }))
-                  }
-                  className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-800/60 px-3 py-2 text-sm text-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-500/60"
-                  placeholder={
-                    editForm.hasPassword
-                      ? "Leave blank to keep current password"
-                      : "Enter new password"
-                  }
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-gray-200">
-                  ESP32 Devices
-                </p>
-                <button
-                  type="button"
-                  onClick={addEditDeviceRow}
-                  className="text-xs font-semibold text-cyan-300 hover:text-cyan-200"
-                >
-                  + Add device
-                </button>
-              </div>
-              <div className="space-y-2">
-                {editForm.devices.map((device, index) => (
-                  <div
-                    key={`${device.id}-${index}`}
-                    className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-2 items-end"
-                  >
-                    <input
-                      type="text"
-                      value={device.id}
-                      onChange={(event) =>
-                        updateEditDeviceField(index, "id", event.target.value)
-                      }
-                      className="rounded-xl border border-slate-700 bg-slate-800/60 px-3 py-2 text-sm text-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-500/60"
-                      placeholder="ESP32 ID"
-                    />
-                    <input
-                      type="text"
-                      value={device.mac}
-                      onChange={(event) =>
-                        updateEditDeviceField(index, "mac", event.target.value)
-                      }
-                      className="rounded-xl border border-slate-700 bg-slate-800/60 px-3 py-2 text-sm text-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-500/60"
-                      placeholder="MAC Address"
-                    />
-                    <div className="flex justify-end md:justify-start">
-                      {editForm.devices.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => removeEditDeviceRow(index)}
-                          className="rounded-full border border-slate-700 px-3 py-2 text-xs text-gray-400 hover:text-red-300 hover:border-red-400/60"
-                        >
-                          Remove
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={handleEditSave}
-                className="rounded-xl bg-cyan-500 px-4 py-2 text-xs font-semibold text-slate-900 hover:bg-cyan-400 transition-colors"
-              >
-                Save Changes
-              </button>
-              {editMessage && (
-                <span className="text-xs text-cyan-300">{editMessage}</span>
-              )}
-            </div>
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div className="rounded-2xl border border-slate-700/60 bg-slate-900/50 p-6 space-y-4">
-            <h2 className="text-lg font-semibold text-gray-100">ESP32 Status</h2>
-            <div className="space-y-3">
-              {deviceStatuses.length === 0 ? (
-                <p className="text-sm text-gray-500">No devices registered.</p>
-              ) : (
-                deviceStatuses.map((device) => (
-                  <div
-                    key={device.id}
-                    className="flex flex-col gap-2 rounded-xl border border-slate-700/60 bg-slate-800/60 p-4"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-semibold text-gray-100">
-                          {device.id}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          MAC: {device.mac}
-                        </p>
-                        <p className="text-xs text-gray-400">
-                          Firmware: {device.status.firmwareVersion || "Unknown"}
-                        </p>
-                      </div>
-                      <span
-                        className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                          device.status.online
-                            ? "bg-green-500/20 text-green-300"
-                            : "bg-slate-700 text-gray-300"
-                        }`}
-                      >
-                        {device.status.online ? "Online" : "Offline"}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-400">
-                      {formatLastSeen(device.status.lastSeen)}
-                    </p>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-slate-700/60 bg-slate-900/50 p-6 space-y-4">
-            <h2 className="text-lg font-semibold text-gray-100">Faults</h2>
-            <p className="text-xs text-gray-500">
-              Showing faults that match this site name.
-            </p>
-            <div className="space-y-3">
-              {faults.length === 0 ? (
-                <p className="text-sm text-gray-500">
-                  No faults recorded for this site yet.
-                </p>
-              ) : (
-                faults.slice(0, 10).map((fault) => (
-                  <div
-                    key={fault.file}
-                    className="rounded-xl border border-slate-700/60 bg-slate-800/60 p-4"
-                  >
-                    <p className="text-sm font-semibold text-gray-100">
-                      {fault.faultType}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      Location: {fault.faultLocation}
-                    </p>
-                    <p className="text-xs text-gray-400">
-                      {fault.date || "Unknown date"} {fault.time || ""}
-                    </p>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
+        <div className="row" style={{ gap: 8 }}>
+          <Button size="sm" variant="ghost" onClick={() => setEditing((v) => !v)}>
+            <Icon name="edit" size={11} /> {editing ? "Close Edit" : "Edit"}
+          </Button>
+          <Link href="/firmware">
+            <Button size="sm" variant="ghost">
+              <Icon name="firmware" size={11} /> Deploy FW
+            </Button>
+          </Link>
+          <Button size="sm" variant="danger" onClick={handleRemove}>
+            <Icon name="trash" size={11} /> Remove
+          </Button>
         </div>
       </div>
+
+      <div className="panel" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)" }}>
+        <Metric
+          label="Online"
+          value={online}
+          unit={`/ ${devices.length}`}
+          flavor={devices.length > 0 && online === devices.length ? "" : "amber"}
+        />
+        <div className="sep-v" />
+        <Metric label="Avg RSSI" value={avgRssi || "—"} unit={avgRssi ? "dBm" : ""} />
+        <div className="sep-v" />
+        <Metric label="Faults · 30d" value={faults.length} flavor={faults.length > 3 ? "alert" : ""} />
+        <div className="sep-v" />
+        <Metric label={`FW ${TARGET_FW}`} value={onTarget} unit={`/ ${devices.length}`} />
+      </div>
+
+      <div className="grid g2">
+        <Panel title="Devices" bodyClass="p0">
+          {devices.length === 0 ? (
+            <div className="empty">No devices registered.</div>
+          ) : (
+            <table className="tbl">
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>Device</th>
+                  <th>MAC</th>
+                  <th>Firmware</th>
+                  <th className="num">RSSI</th>
+                  <th>Uptime</th>
+                  <th>Last Seen</th>
+                </tr>
+              </thead>
+              <tbody>
+                {devices.map((d) => (
+                  <tr key={d.id}>
+                    <td><Dot tone={d.status.online ? "ok" : "alert"} /></td>
+                    <td><span className="code">{d.id}</span></td>
+                    <td className="t-mute t-mono-xs">{d.mac}</td>
+                    <td>
+                      {d.status.firmwareVersion === TARGET_FW ? (
+                        <Badge tone="ok">{d.status.firmwareVersion}</Badge>
+                      ) : (
+                        <Badge tone="warn">{d.status.firmwareVersion || "unknown"}</Badge>
+                      )}
+                    </td>
+                    <td className="num">{d.status.rssi ?? "—"}</td>
+                    <td className="t-mute">{formatUptime(d.status.uptime)}</td>
+                    <td className="t-mute t-mono-xs">
+                      {d.status.lastSeen ? formatRelTime(d.status.lastSeen) : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Panel>
+
+        <Panel title="Fault History" bodyClass="p0">
+          {faults.length === 0 ? (
+            <div className="empty">No faults recorded for this site.</div>
+          ) : (
+            <table className="tbl">
+              <thead>
+                <tr>
+                  <th>Type</th>
+                  <th>Location</th>
+                  <th>Device</th>
+                  <th className="right">When</th>
+                </tr>
+              </thead>
+              <tbody>
+                {faults.slice(0, 25).map((f) => (
+                  <tr
+                    key={f.file}
+                    style={{ cursor: "pointer" }}
+                    onClick={() => router.push(`/graph?file=${encodeURIComponent(f.file)}`)}
+                  >
+                    <td>{formatLabel(f.faultType)}</td>
+                    <td className="t-mute">{formatLabel(f.faultLocation)}</td>
+                    <td><span className="code">{f.device || "—"}</span></td>
+                    <td className="right t-mute t-mono-xs">{f.date} {f.time}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Panel>
+      </div>
+
+      {editing && (
+        <Panel title="Edit Site">
+          <div className="grid g3">
+            <Field label="Site Name">
+              <input
+                className="input"
+                value={editForm.name}
+                onChange={(e) => setEditForm((p) => ({ ...p, name: e.target.value }))}
+              />
+            </Field>
+            <Field label="WiFi SSID">
+              <input
+                className="input"
+                value={editForm.wifiSsid}
+                onChange={(e) => setEditForm((p) => ({ ...p, wifiSsid: e.target.value }))}
+              />
+            </Field>
+            <Field label="WiFi Password" hint={editForm.hasPassword ? "Leave blank to keep current" : "Set a password"}>
+              <input
+                className="input"
+                type="password"
+                value={editForm.wifiPassword}
+                onChange={(e) => setEditForm((p) => ({ ...p, wifiPassword: e.target.value }))}
+                placeholder={editForm.hasPassword ? "••••••••" : "Enter password"}
+              />
+            </Field>
+          </div>
+          <div className="sep" />
+          <div className="row between" style={{ marginBottom: 8 }}>
+            <span className="field-label">Devices</span>
+            <Button size="sm" variant="ghost" onClick={addDeviceRow}>
+              <Icon name="plus" size={11} /> Add device
+            </Button>
+          </div>
+          {editForm.devices.map((d, i) => (
+            <div key={i} className="row" style={{ gap: 8, marginBottom: 6 }}>
+              <input
+                className="input"
+                value={d.id}
+                onChange={(e) => updateDeviceField(i, "id", e.target.value)}
+                placeholder="esp32-XXXX"
+              />
+              <input
+                className="input"
+                value={d.mac}
+                onChange={(e) => updateDeviceField(i, "mac", e.target.value)}
+                placeholder="AA:BB:CC:DD:EE:FF"
+              />
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => removeDeviceRow(i)}
+                disabled={editForm.devices.length === 1}
+              >
+                <Icon name="trash" size={11} />
+              </Button>
+            </div>
+          ))}
+          <div className="row" style={{ gap: 8, marginTop: 12 }}>
+            <Button variant="primary" size="sm" onClick={handleSave}>
+              <Icon name="check" size={11} /> Save
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setEditing(false)}>Cancel</Button>
+          </div>
+        </Panel>
+      )}
+
+      <Toast message={toast?.message} tone={toast?.tone} onClose={() => setToast(null)} />
     </div>
   );
 }

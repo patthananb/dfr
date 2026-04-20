@@ -2,162 +2,184 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Badge, Button, Dot, Icon, Kicker, Panel, Toast, formatRelTime } from "@/components/ui";
+
+const TARGET_FW = "1.4.2";
 
 export default function SitesPage() {
+  const router = useRouter();
   const [sites, setSites] = useState([]);
   const [statuses, setStatuses] = useState({});
-  const [message, setMessage] = useState("");
+  const [faults, setFaults] = useState([]);
+  const [query, setQuery] = useState("");
+  const [toast, setToast] = useState(null);
 
-  const removeSite = async (siteId, siteName) => {
-    const shouldRemove = window.confirm(
-      `Remove ${siteName}? This cannot be undone.`
-    );
-    if (!shouldRemove) return;
-
+  const loadAll = async () => {
     try {
-      const res = await fetch(`/api/sites?id=${siteId}`, { method: "DELETE" });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to remove site");
+      const [sitesRes, statusRes, faultsRes] = await Promise.all([
+        fetch("/api/sites"),
+        fetch("/api/status"),
+        fetch("/api/faults"),
+      ]);
+      if (sitesRes.ok) {
+        const data = await sitesRes.json();
+        setSites(Array.isArray(data.sites) ? data.sites : []);
       }
-      setSites(Array.isArray(data.sites) ? data.sites : []);
-    } catch (error) {
-      console.error(error);
-      setMessage(error.message || "Unable to remove site.");
-    }
-  };
-
-  const loadSites = async () => {
-    try {
-      const res = await fetch("/api/sites");
-      if (!res.ok) {
-        throw new Error("Failed to load sites");
+      if (statusRes.ok) {
+        const data = await statusRes.json();
+        setStatuses(data.statuses || {});
       }
-      const data = await res.json();
-      setSites(Array.isArray(data.sites) ? data.sites : []);
-    } catch (error) {
-      console.error(error);
-      setMessage("Unable to load sites.");
-    }
-  };
-
-  const loadStatus = async () => {
-    try {
-      const res = await fetch("/api/status");
-      if (!res.ok) {
-        throw new Error("Failed to load status");
+      if (faultsRes.ok) {
+        const data = await faultsRes.json();
+        setFaults(Array.isArray(data.faults) ? data.faults : []);
       }
-      const data = await res.json();
-      setStatuses(data.statuses || {});
-    } catch (error) {
-      console.error(error);
-      setMessage("Unable to load ESP32 status.");
+    } catch (err) {
+      console.error(err);
+      setToast({ message: "Unable to load sites", tone: "error" });
     }
   };
 
   useEffect(() => {
-    loadSites();
-    loadStatus();
-    const interval = setInterval(loadStatus, 15000);
-    return () => clearInterval(interval);
+    loadAll();
+    const t = setInterval(loadAll, 15000);
+    return () => clearInterval(t);
   }, []);
 
-  const siteCards = useMemo(
-    () =>
-      sites.map((site) => {
-        const devices = site.devices || [];
-        const onlineCount = devices.filter(
-          (device) => statuses[device.id]?.online
-        ).length;
-        return {
-          ...site,
-          devices,
-          onlineCount,
-        };
-      }),
-    [sites, statuses]
-  );
+  const removeSite = async (siteId, siteName) => {
+    if (!window.confirm(`Remove ${siteName}? This cannot be undone.`)) return;
+    try {
+      const res = await fetch(`/api/sites?id=${siteId}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to remove site");
+      setSites(Array.isArray(data.sites) ? data.sites : []);
+      setToast({ message: `Removed ${siteName}`, tone: "success" });
+    } catch (err) {
+      setToast({ message: err.message || "Unable to remove site", tone: "error" });
+    }
+  };
+
+  const lastFaultBySite = useMemo(() => {
+    const map = {};
+    for (const f of faults) {
+      const stamp = `${f.date || ""}T${f.time || "00:00:00"}`;
+      const ms = Date.parse(stamp);
+      if (!Number.isFinite(ms)) continue;
+      if (!map[f.site] || ms > map[f.site].ms) map[f.site] = { ms, raw: f };
+    }
+    return map;
+  }, [faults]);
+
+  const filtered = useMemo(() => {
+    const q = query.toLowerCase().trim();
+    return sites.filter((s) => !q || (s.name || "").toLowerCase().includes(q));
+  }, [sites, query]);
 
   return (
-    <div className="flex flex-col items-center justify-center flex-1 p-4 text-gray-100">
-      <div className="w-full max-w-5xl space-y-8">
-        <div className="bg-gradient-to-br from-slate-800/90 via-slate-900/90 to-slate-800/90 backdrop-blur-md rounded-2xl shadow-2xl border border-slate-700/50 overflow-hidden">
-          <div className="p-8 sm:p-10 space-y-6 text-center">
-            <div className="space-y-2">
-              <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-                Site Information
-              </h1>
-              <p className="text-gray-400 text-sm">
-                View every site, then open a card to see device heartbeat,
-                faults, and firmware details.
-              </p>
-            </div>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 text-sm text-gray-300">
-              <span>Need to register a site?</span>
-              <Link
-                href="/sites/setup"
-                className="text-cyan-300 hover:text-cyan-200 underline"
-              >
-                Go to Site Setup
-              </Link>
-            </div>
+    <div className="main-inner col" style={{ gap: 20 }}>
+      <div className="row between">
+        <div>
+          <Kicker>Sites</Kicker>
+          <div className="t-h1" style={{ marginTop: 4 }}>Sites & Devices</div>
+          <div className="t-mono-xs t-mute" style={{ marginTop: 2 }}>
+            {sites.length} site{sites.length === 1 ? "" : "s"} registered
           </div>
         </div>
+        <div className="row" style={{ gap: 8 }}>
+          <input
+            className="input"
+            style={{ width: 220 }}
+            placeholder="Search sites…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          <Link href="/sites/setup">
+            <Button variant="primary" size="sm">
+              <Icon name="plus" size={11} /> New Site
+            </Button>
+          </Link>
+        </div>
+      </div>
 
-        {message && (
-          <div className="rounded-2xl border border-red-500/40 bg-red-900/20 p-4 text-sm text-red-200">
-            {message}
-          </div>
-        )}
-
-        {siteCards.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-900/50 p-6 text-center text-sm text-gray-500">
-            No sites configured yet. Create your first site in the setup page.
+      <Panel bodyClass="p0">
+        {filtered.length === 0 ? (
+          <div className="empty">
+            {sites.length === 0
+              ? "No sites configured yet. Register your first site in setup."
+              : "No sites match the current search."}
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {siteCards.map((site) => (
-              <div
-                key={site.id}
-                className="rounded-2xl border border-slate-700/60 bg-slate-900/50 p-6 space-y-4"
-              >
-                <div className="space-y-1">
-                  <h2 className="text-lg font-semibold text-gray-100">
-                    {site.name}
-                  </h2>
-                  <p className="text-xs text-gray-500">
-                    WiFi SSID: {site.wifi?.ssid || "Not set"}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    Devices: {site.devices.length}
-                  </p>
-                </div>
-                <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-400">
-                  <span>
-                    Online: {site.onlineCount}/{site.devices.length}
-                  </span>
-                  <div className="flex items-center gap-3">
-                    <Link
-                      href={`/sites/${site.id}`}
-                      className="text-cyan-300 hover:text-cyan-200"
-                    >
-                      View details →
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={() => removeSite(site.id, site.name)}
-                      className="text-red-300 hover:text-red-200"
-                      aria-label={`Remove site ${site.name}`}
-                    >
-                      Remove
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+          <table className="tbl">
+            <thead>
+              <tr>
+                <th style={{ width: 22 }}></th>
+                <th>Site</th>
+                <th>SSID</th>
+                <th className="right">Devices</th>
+                <th className="right">Online</th>
+                <th>FW Compliance</th>
+                <th>Last Fault</th>
+                <th className="right"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((s) => {
+                const devices = s.devices || [];
+                const total = devices.length;
+                const online = devices.filter((d) => statuses[d.id]?.online).length;
+                const onTarget = devices.filter((d) => statuses[d.id]?.firmwareVersion === TARGET_FW).length;
+                const pct = total ? Math.round((onTarget / total) * 100) : 0;
+                const lf = lastFaultBySite[s.name];
+                const tone = total === 0 ? "off" : online === total ? "ok" : online === 0 ? "alert" : "warn";
+                return (
+                  <tr
+                    key={s.id}
+                    onClick={() => router.push(`/sites/${s.id}`)}
+                    style={{ cursor: "pointer" }}
+                  >
+                    <td><Dot tone={tone} /></td>
+                    <td style={{ fontWeight: 500 }}>{s.name}</td>
+                    <td className="t-mute"><span className="code">{s.wifi?.ssid || "—"}</span></td>
+                    <td className="num">{total}</td>
+                    <td className="num">
+                      <span style={{ color: total > 0 && online === total ? "var(--ok)" : "var(--accent)" }}>
+                        {online}
+                      </span>
+                      /{total}
+                    </td>
+                    <td>
+                      <div className="row" style={{ gap: 8 }}>
+                        <div className="progress" style={{ width: 80 }}>
+                          <div className="progress-fill" style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className="t-mono-xs t-mute">{pct}%</span>
+                      </div>
+                    </td>
+                    <td className="t-mute t-mono-xs">
+                      {lf ? `${lf.raw.date} ${lf.raw.time}` : "—"}
+                    </td>
+                    <td className="right" onClick={(e) => e.stopPropagation()}>
+                      <div className="row" style={{ gap: 8, justifyContent: "flex-end" }}>
+                        <button
+                          type="button"
+                          className="btn ghost sm"
+                          onClick={() => removeSite(s.id, s.name)}
+                          title="Remove site"
+                        >
+                          <Icon name="trash" size={11} />
+                        </button>
+                        <Icon name="chevron" size={12} style={{ color: "var(--muted)" }} />
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         )}
-      </div>
+      </Panel>
+
+      <Toast message={toast?.message} tone={toast?.tone} onClose={() => setToast(null)} />
     </div>
   );
 }
