@@ -197,6 +197,28 @@ Both `data/` and `firmware/` are git-ignored and created at runtime. The SQLite 
 | `/sites/setup` | Register a new site with devices and WiFi credentials |
 | `/sites/[id]` | Site detail — heartbeat info, firmware status, fault history, edit |
 
+## Screenshots
+
+### Dashboard (Overview)
+Central monitoring hub showing fleet status, device health, firmware targets, latest fault events, and a summary waveform.
+
+![DFR Dashboard](docs/screenshots/01-dashboard.png)
+
+### Waveforms (Graph Viewer)
+Interactive oscilloscope-style viewer for fault data with multi-channel display (voltage V1/V2/V3 and current I1/I2/I3), time-window controls, dual cursors for measurement, and Live ADC mode for real-time sampling.
+
+![Waveforms Viewer](docs/screenshots/02-waveforms.png)
+
+### Firmware Manager
+Upload new firmware versions, set active releases per device, view version history, and bulk deploy across sites or fleet. HMAC-SHA256 signature verification on upload.
+
+![Firmware Manager](docs/screenshots/03-firmware.png)
+
+### Sites & Devices
+Register sites, manage ESP32 devices per location, track online/offline status, and monitor device heartbeats and firmware versions.
+
+![Sites & Devices](docs/screenshots/04-sites.png)
+
 ## API Reference
 
 ### Sensor Data — `/api/data`
